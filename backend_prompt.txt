@@ -1,0 +1,326 @@
+I have a complete Next.js 14 frontend already built with mock data.
+Now implement the full backend to make every page functional.
+Connect all pages to real data — replace all mock data with API calls.
+
+== TECH STACK ==
+Next.js 14 (App Router), TypeScript, Prisma ORM,
+PostgreSQL (Supabase), NextAuth.js (Google OAuth only),
+Supabase Storage (photo uploads), ExcelJS (.xlsx export).
+Deploy target: Vercel + Supabase.
+
+== STEP 1: DATABASE SETUP ==
+Create Prisma schema with these models:
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String   @unique
+  image         String?
+  role          Role     @default(USER)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  reports       DailyReport[]
+  customers     Customer[]
+  photos        CustomerPhoto[]
+}
+
+enum Role { USER ADMIN }
+
+model DailyReport {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  reportDate    DateTime @db.Date
+  tasksToday    String
+  planTomorrow  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@unique([userId, reportDate])
+}
+
+model Customer {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  name      String
+  source    Source
+  status    Status         @default(INTERESTED)
+  phone     String?
+  email     String?
+  notes     String?
+  photos    CustomerPhoto[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+enum Source {
+  WALK_IN XIAOHONGSHU META INSTAGRAM REFERRAL OTHER
+}
+
+enum Status {
+  INTERESTED FOLLOWING_UP QUOTED CLOSED_WON LOST
+}
+
+model CustomerPhoto {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  staffId     String
+  staff       User     @relation(fields: [staffId], references: [id])
+  storageUrl  String
+  filename    String
+  photoMonth  String
+  createdAt   DateTime @default(now())
+}
+
+model PhotoCleanupLog {
+  id            String    @id @default(cuid())
+  month         String
+  remindedAt    DateTime?
+  confirmedBy   String?
+  confirmedAt   DateTime?
+  deletedAt     DateTime?
+}
+
+model KBFile {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // 'pdf' | 'image'
+  category    String   // 'case-photos' | 'onboarding' | 'catalogs' | 'training' | 'policies'
+  subCategory String?  // 'cases' | 'showroom' — only used when category = 'case-photos'
+  sizeBytes   Int
+  storageUrl  String
+  filename    String
+  uploadedAt  DateTime @default(now())
+}
+
+== STEP 2: AUTHENTICATION ==
+Configure NextAuth.js with Google OAuth provider.
+On first login: auto-create User record with role = USER.
+Store id, email, name, image, role in JWT session token.
+Middleware: protect all routes, redirect unauthenticated → /login.
+Admin routes (/dashboard, /export, /admin/*): redirect non-admin → /reports.
+Deactivated accounts (active = false): block session, show error on /login.
+
+== STEP 3: API ROUTES ==
+
+--- Daily Reports ---
+
+GET /api/reports
+  - User: return own reports only
+  - Admin: return all reports
+  - Query params: userId (admin filter), startDate, endDate
+  - Include user name in response
+
+POST /api/reports
+  - Create new report for logged-in user
+  - Body: { tasksToday, planTomorrow }
+  - Server enforce: one report per user per reportDate (return 409 if exists)
+  - reportDate = today (server-side, not client)
+
+PATCH /api/reports/[id]
+  - Update own report only
+  - Only allowed if reportDate = today
+  - Body: { tasksToday, planTomorrow }
+
+GET /api/reports/today
+  - Return logged-in user's report for today (or null if not submitted)
+
+--- Customers ---
+
+GET /api/customers
+  - User: return own customers only
+  - Admin: return all customers
+  - Query params: userId, source, status
+  - Include user name and photo count
+
+POST /api/customers
+  - Create new customer for logged-in user
+  - Body: { name, source, status, phone, email, notes }
+  - Validate required: name, source
+
+GET /api/customers/[id]
+  - User: own customer only (403 if not owner)
+  - Admin: any customer
+  - Include photos array
+
+PATCH /api/customers/[id]
+  - User: own customer only
+  - Admin: any customer
+  - Body: any updatable fields
+
+--- Photos ---
+
+POST /api/customers/[id]/photos
+  - Upload image to Supabase Storage
+  - Path: photos/{YYYY-MM}/{staffId}/{filename}
+  - Save record to CustomerPhoto table
+  - Fields saved: storageUrl, filename, staffId, photoMonth
+  - Max 10MB per file, accept image/* only
+
+GET /api/admin/photos
+  - Admin only
+  - Return all photos from previous month
+  - Grouped by staff member
+  - Include customer name for each photo
+
+POST /api/admin/photos/download
+  - Admin only
+  - Fetch all previous month photos from Supabase Storage
+  - Generate zip file with structure:
+      photos_YYYY_MM.zip
+        └── [Staff Name]/
+              └── [customerName]_[filename]
+  - Stream zip as download response
+
+DELETE /api/admin/photos
+  - Admin only
+  - Delete all previous month photos from Supabase Storage
+  - Delete CustomerPhoto records from database
+  - Create/update PhotoCleanupLog record with confirmedBy + deletedAt
+
+--- Export ---
+
+GET /api/export/reports
+  - Admin only
+  - Query params: startDate, endDate, userId (optional)
+  - Generate .xlsx with ExcelJS
+  - Columns: Date, Staff Name, Today's Tasks, Tomorrow's Plan
+  - Header row: bold, background #DBEAFE
+  - Auto column widths
+  - Stream as download, filename: daily-reports-{date}.xlsx
+
+GET /api/export/customers
+  - Admin only
+  - Query params: userId (optional, no date filter)
+  - Generate .xlsx with ExcelJS
+  - Columns: Name, Source, Status, Phone, Email, Notes, Created By, Created Date
+  - Header row: bold, background #DBEAFE
+  - Auto column widths
+  - Stream as download, filename: customer-records-export.xlsx
+
+--- Dashboard ---
+
+GET /api/dashboard/stats
+  - Admin only
+  - Return:
+    {
+      walkInThisMonth: number,
+      closedWonByStaff: [{ name, count }],
+      sourceBreakdown: [{ source, count, percentage }],
+      notSubmittedToday: [{ id, name }]
+    }
+
+--- Admin: Users ---
+
+GET /api/admin/users
+  - Admin only
+  - Return all users with id, name, email, role, active
+
+PATCH /api/admin/users/[id]
+  - Admin only
+  - Body: { role } or { active }
+  - Toggle active status or change role
+
+--- Knowledge Base ---
+
+GET /api/kb/files
+  - All authenticated users
+  - Query params: category (required), subCategory (optional)
+  - Return array of KBFile records matching the filters
+  - Order by uploadedAt descending
+
+POST /api/kb/files
+  - Admin only (403 for non-admin)
+  - Multipart form upload
+  - Fields: category, subCategory (optional), file
+  - Enforce image-only (image/*) when category = 'case-photos'
+  - Max file size: 10MB
+  - Upload to Supabase Storage:
+      Regular categories: kb/{category}/{uuid}_{filename}
+      Case Photos:        kb/case-photos/{subCategory}/{uuid}_{filename}
+  - Save KBFile record with storageUrl, filename, sizeBytes, type, category, subCategory
+  - Return created KBFile record
+
+DELETE /api/kb/files/[id]
+  - Admin only (403 for non-admin)
+  - Delete file from Supabase Storage
+  - Delete KBFile record from database
+  - Return { success: true }
+
+GET /api/kb/files/[id]/download
+  - All authenticated users
+  - Generate a signed Supabase Storage URL (expires in 60 seconds)
+  - Redirect to the signed URL so the browser triggers a download
+
+== STEP 4: MONTHLY REMINDER SYSTEM ==
+Use a cron job via Vercel Cron (vercel.json configuration).
+Schedule: runs every day at 9:00 AM Pacific time.
+
+Logic in /api/cron/photo-reminder:
+  1. Check if previous month has any CustomerPhoto records
+  2. Check PhotoCleanupLog — if deletedAt exists for that month, skip
+  3. If photos exist and not deleted:
+     - Update PhotoCleanupLog.remindedAt = now()
+     - Send email to all Admin users via Resend or Nodemailer
+       Subject: "[CabinetSales] ⚠️ {Month} Photos Pending Review"
+       Body: "Please log in to review and delete last month's photos."
+  4. Show persistent banner in app for Admin (check via /api/admin/photos/status endpoint)
+
+GET /api/admin/photos/status
+  - Admin only
+  - Return { hasPendingPhotos: boolean, pendingMonth: string | null }
+  - Used by layout to show/hide the warning banner
+
+== STEP 5: CONNECT FRONTEND TO BACKEND ==
+Replace all mock data in every page with real API calls using fetch or SWR.
+Use React Server Components where possible (data fetching in page.tsx).
+Use Client Components only for interactive elements (forms, dropdowns, modals).
+
+Page connections:
+  /dashboard       → GET /api/dashboard/stats
+  /reports         → GET /api/reports (with filters)
+  /reports/new     → GET /api/reports/today + POST /api/reports
+  /reports/[id]/edit → GET /api/reports/[id] + PATCH /api/reports/[id]
+  /customers       → GET /api/customers (with filters)
+  /customers/new   → POST /api/customers + POST /api/customers/[id]/photos
+  /customers/[id]  → GET /api/customers/[id] + PATCH + photo upload
+  /export          → GET /api/export/reports + GET /api/export/customers
+  /admin/photos    → GET /api/admin/photos + POST download + DELETE
+  /admin/users     → GET /api/admin/users + PATCH /api/admin/users/[id]
+  Layout           → GET /api/admin/photos/status (for warning banner)
+  /knowledge       → GET /api/kb/files (filtered by category + subCategory)
+                     POST /api/kb/files (admin upload)
+                     DELETE /api/kb/files/[id] (admin delete)
+                     GET /api/kb/files/[id]/download (signed URL for all users)
+
+== STEP 6: ENVIRONMENT VARIABLES ==
+Create .env.local with these variables (provide instructions to fill in):
+  DATABASE_URL=
+  DIRECT_URL=
+  NEXTAUTH_URL=
+  NEXTAUTH_SECRET=
+  GOOGLE_CLIENT_ID=
+  GOOGLE_CLIENT_SECRET=
+  NEXT_PUBLIC_SUPABASE_URL=
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=
+  SUPABASE_SERVICE_ROLE_KEY=
+  RESEND_API_KEY=        (for email reminders)
+
+== DEVELOPMENT ORDER ==
+1. Set up Prisma schema and run Supabase migration
+2. Configure NextAuth.js with Google OAuth + middleware
+3. Implement all /api/reports routes
+4. Implement all /api/customers routes
+5. Implement photo upload to Supabase Storage
+6. Implement /api/dashboard/stats
+7. Implement /api/export routes with ExcelJS
+8. Implement /api/admin/photos routes + zip download
+9. Implement /api/admin/users routes
+10. Implement Vercel Cron + email reminder
+11. Implement /api/kb routes (file list, upload, delete, signed download)
+12. Connect all frontend pages to real API routes
+13. Test full flow: login → submit report → add customer → export → photo cleanup → browse knowledge base
+
+Provide complete working code for every file.
+If response is cut off, I will say "continue" and you should resume exactly where you stopped.

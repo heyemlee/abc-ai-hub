@@ -1,0 +1,333 @@
+Build the complete frontend for an internal web application for a California 
+cabinet company sales team. This is frontend only — use mock data for all 
+content, no real API calls or database connections needed.
+
+== TECH STACK ==
+Next.js 14 (App Router), TypeScript, Tailwind CSS.
+No backend, no database, no auth implementation.
+Use hardcoded mock data to populate all pages.
+
+== MOCK DATA TO USE THROUGHOUT ==
+Mock users:
+  - Alice Chen (admin)
+  - Bob Martinez (user)
+  - Sarah Kim (user)
+  - David Wong (user)
+
+Mock customer sources: Walk-in, 小红书, Meta, Instagram, Referral, Other
+Mock customer statuses: Interested, Following Up, Quoted, Closed Won, Lost
+
+== DESIGN SYSTEM — GROK AI STYLE ==
+Overall: Dark theme, minimalist, high contrast, premium feel.
+
+Color Palette:
+  Background main:      #0D0D0D
+  Background sidebar:   #111111
+  Background cards:     #1A1A1A
+  Background input:     #1E1E1E
+  Border:               #2A2A2A
+  Primary text:         #FFFFFF
+  Secondary text:       #9CA3AF
+  Accent / CTA:         #FF4D00
+  Success:              #22C55E
+  Warning:              #F59E0B
+  Error:                #EF4444
+  Disabled:             #3A3A3A
+
+Typography:
+  Font: Inter (import from Google Fonts)
+  Headings: font-weight 700, white
+  Body: font-weight 400, #E5E7EB
+  Labels: #6B7280, uppercase, text-xs, tracking-wider
+
+Sidebar:
+  Background: #111111, width: 240px, fixed height full screen
+  Active item: white text + 3px left border #FF4D00 + #1A1A1A background
+  Inactive item: #6B7280 text, hover → white text
+  Coming Soon items: #3A3A3A text, cursor not-allowed, show tooltip "Coming Soon" on hover
+  Logo/company name at top
+  User section at bottom with avatar + name
+
+Top bar:
+  Background: #0D0D0D, border-bottom: 1px solid #2A2A2A
+  Page title on left, user avatar + name + logout button on right
+
+Cards:
+  Background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 12px
+  Padding: 24px
+  Hover: border-color → #FF4D00 with subtle transition
+
+Tables:
+  Header: #1A1A1A background, #9CA3AF text, uppercase, text-xs, tracking-wider
+  Rows: transparent background, hover → #1E1E1E
+  Border-bottom: 1px solid #2A2A2A on each row
+
+Forms / Inputs:
+  Background: #1E1E1E, border: 1px solid #2A2A2A, border-radius: 8px
+  Focus: border-color #FF4D00, box-shadow: 0 0 0 1px #FF4D00
+  Text: #FFFFFF, placeholder: #6B7280
+  Labels: #9CA3AF, uppercase, text-xs, tracking-wider, mb-1
+
+Buttons:
+  Primary: bg #FF4D00, text white, rounded-lg, hover → #FF6020
+  Secondary: bg transparent, border 1px solid #2A2A2A, text #E5E7EB, hover → border-white
+  Danger: bg #EF4444, text white
+  Disabled: bg #2A2A2A, text #6B7280, cursor not-allowed
+
+Status badges (pill shaped, rounded-full):
+  interested:   bg #1E3A5F, text #3B82F6
+  following_up: bg #3B2A00, text #F59E0B
+  quoted:       bg #2E1A4A, text #A78BFA
+  closed_won:   bg #052E16, text #22C55E
+  lost:         bg #1F1F1F, text #6B7280
+
+Modals:
+  Overlay: rgba(0,0,0,0.85)
+  Background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 16px
+
+Toast notifications:
+  Background: #1A1A1A, border: 1px solid #2A2A2A
+  Success: green icon, Error: red icon
+
+General rules:
+  - No white backgrounds anywhere
+  - All transitions: transition-all duration-200
+  - Border-radius: 8px inputs/buttons, 12px cards/modals
+  - Tailwind CSS only, no external UI libraries
+  - Thin dark scrollbar: scrollbar-color #2A2A2A #0D0D0D
+
+== LAYOUT COMPONENT (applies to all pages except /login) ==
+Left sidebar (240px fixed) + main content area (flex-1, overflow-y-auto).
+
+Sidebar navigation order:
+  Section 1 — General (all users):
+    - Daily Reports  (/reports)
+    - Customers  (/customers)
+
+  Section 2 — Admin (show for admin mock user):
+    - Dashboard  (/dashboard)
+    - Export  (/export)
+    - Photo Management  (/admin/photos)
+    - Staff Management  (/admin/users)
+
+  Section 3 — Coming Soon (bottom of sidebar, grayed out):
+    - Analytics 📊  (not clickable, tooltip: "Coming Soon")
+    - AI Assistant 🤖  (not clickable, tooltip: "Coming Soon")
+
+Top bar: page title left, avatar + "Alice Chen" + Logout button right.
+
+== PAGE 1: /login ==
+Centered card on full dark background (#0D0D0D).
+Company name "CabinetSales" at top in white, large.
+Subtitle: "Internal Sales Management"
+"Sign in with Google" button: white background, black text, Google icon, rounded-lg.
+Below button: small gray text "Contact your administrator if you need access."
+
+== PAGE 2: /dashboard ==
+Page title: "Dashboard"
+4 stat cards in a 2x2 grid:
+
+  Card 1 — Walk-in This Month:
+    Large number: "12"
+    Label: "Walk-in Customers This Month"
+    Small trend text: "+3 from last month" in green
+
+  Card 2 — Closed Won by Staff:
+    Mini table inside card:
+    Staff Name      | This Month
+    Alice Chen      | 8
+    Sarah Kim       | 5
+    Bob Martinez    | 3
+    David Wong      | 1
+    Label: "Closed Won This Month"
+
+  Card 3 — Customer Source Breakdown:
+    Horizontal bar chart (pure CSS or inline SVG):
+    Walk-in      ████████░░  40%
+    小红书        █████░░░░░  25%
+    Meta         ████░░░░░░  18%
+    Instagram    ██░░░░░░░░  10%
+    Referral     █░░░░░░░░░   5%
+    Other        ░░░░░░░░░░   2%
+    Label: "Source Breakdown (All Time)"
+
+  Card 4 — Not Submitted Today:
+    Label: "Not Submitted Today"
+    List: "Bob Martinez", "David Wong"
+    Each name as a small pill/tag in #1E1E1E
+
+Below 4 cards — Coming Soon placeholder:
+  Dashed border box, full width, height 180px
+  Center text: "📊 Social Media Analytics — Coming Soon"
+  Subtext: "Instagram, Meta, and 小红书 traffic trends will appear here."
+  All text in #3A3A3A
+
+== PAGE 3: /reports ==
+Page title: "Daily Reports"
+Top-right button: "Submit Today's Report" (primary orange button)
+
+Filter bar (show as if admin view):
+  Staff dropdown: "All Staff"
+  Date range: Start Date input + End Date input
+  All inputs dark styled
+
+Table with mock data (6-8 rows):
+  Columns: Date | Staff | Today's Tasks | Tomorrow's Plan | Actions
+  Mock rows:
+    2025-01-15 | Alice Chen   | Followed up with 3 clients, updated CRM... | Schedule showroom visits for... | Edit
+    2025-01-15 | Bob Martinez | Called 5 leads from Instagram campaign...  | Prepare quotes for 2 clients... | View
+    2025-01-14 | Sarah Kim    | Walk-in client consultation, measured...   | Follow up on quoted projects... | View
+    2025-01-14 | David Wong   | Updated customer records, sent emails...   | Call Referral leads from last...| View
+    (add 3-4 more rows with similar mock data)
+
+Tasks and Plan columns truncated to 80 chars with "..." ellipsis.
+
+== PAGE 4: /reports/new ==
+Page title: "Submit Today's Report"
+Clean form card:
+  - Report Date: "January 15, 2025" — read-only gray field
+  - Submitted By: "Alice Chen" — read-only gray field
+  - Today's Tasks Completed: large textarea, min-height 150px, placeholder:
+    "What did you accomplish today?"
+  - Tomorrow's Plan: large textarea, min-height 150px, placeholder:
+    "What are your goals for tomorrow?"
+  - Submit button: primary orange, full width, "Submit Report"
+  - Cancel link: gray text, below button
+
+== PAGE 5: /customers ==
+Page title: "Customers"
+Top-right button: "Add New Customer" (primary orange)
+
+Filter bar:
+  Source dropdown: "All Sources"
+  Status dropdown: "All Status"
+  Staff dropdown (admin): "All Staff"
+
+Table with mock data (8-10 rows):
+  Columns: Customer Name | Source | Status | Phone | Created By | Date | Actions
+  Mock rows:
+    Jennifer Liu    | Walk-in    | [quoted badge]       | (626) 555-0101 | Alice Chen   | Jan 15 | View
+    Michael Torres  | Instagram  | [following_up badge] | (818) 555-0234 | Bob Martinez | Jan 14 | View
+    Emily Zhang     | 小红书      | [interested badge]   | (310) 555-0567 | Sarah Kim    | Jan 14 | View
+    Robert Kim      | Meta       | [closed_won badge]   | (213) 555-0890 | Alice Chen   | Jan 13 | View
+    Lisa Wang       | Referral   | [lost badge]         | (626) 555-0123 | David Wong   | Jan 12 | View
+    (add 4-5 more mock rows)
+
+== PAGE 6: /customers/new ==
+Page title: "Add New Customer"
+Form card:
+  - Customer Name: text input, required, label shows red asterisk
+  - Source: dropdown required, options: Walk-in / 小红书 (RedNote) / Meta / Instagram / Referral / Other
+  - Status: dropdown, default "Interested"
+  - Phone: text input, optional
+  - Email: email input, optional
+  - Notes: textarea, optional, placeholder: "Budget, style preference, measurements, etc."
+  - Photos / Screenshots: drag-and-drop upload zone
+      Dark dashed border box, icon + "Drop images here or click to upload"
+      Subtext: "JPG, PNG, HEIC up to 10MB each"
+      Below zone: show 2 mock thumbnail previews (gray placeholder boxes)
+  - Bottom: "Save Customer" primary button + "Cancel" secondary button
+
+== PAGE 7: /customers/[id] ==
+Page title: "Customer Details"
+Two-column layout:
+  Left column (customer info):
+    Each field shown as label + value pairs:
+    NAME: Jennifer Liu
+    SOURCE: Walk-in (with source badge)
+    STATUS: Quoted (dropdown, editable inline)
+    PHONE: (626) 555-0101
+    EMAIL: jennifer.liu@email.com
+    NOTES: Interested in modern white shaker cabinets. Budget around $15,000.
+           Kitchen dimensions: 12x14 ft.
+    CREATED BY: Alice Chen on January 10, 2025
+    "Edit Details" secondary button below
+
+  Right column (photos):
+    Label: "SCREENSHOTS & PHOTOS"
+    3-column thumbnail grid with 4 mock gray placeholder thumbnails
+    Each thumbnail: dark gray box, image icon centered, hover shows overlay with expand icon
+    "Upload More Photos" secondary button below grid
+
+== PAGE 8: /export ==
+Page title: "Export Data"
+Two cards side by side:
+
+  Card 1 — Daily Reports Export:
+    Title: "Daily Reports"
+    Description: "Export staff daily reports for a selected date range."
+    Fields:
+      - Start Date: date input (default today)
+      - End Date: date input (default today)
+      - Staff: dropdown "All Staff"
+    Button: "Export to Excel" (primary orange)
+    Note below: "Exports: Date, Staff Name, Today's Tasks, Tomorrow's Plan"
+
+  Card 2 — Customer Records Export:
+    Title: "Customer Records"
+    Description: "Export all customer records. Filter by staff member."
+    Fields:
+      - Staff: dropdown "All Staff"
+    Button: "Export to Excel" (primary orange)
+    Note below: "Exports: Name, Source, Status, Phone, Email, Notes, Created By, Date"
+    Note: "Photos are not included in exports."
+
+== PAGE 9: /admin/photos ==
+Page title: "Photo Management"
+
+Warning banner at top:
+  Orange/amber background (#3B2A00), border #F59E0B
+  Text: "⚠️ January 2025 photos are pending review. Please download and confirm deletion."
+
+Two action buttons top-right:
+  "Download All (zip)" — secondary button
+  "Confirm & Delete" — danger red button
+
+Photos grouped by staff (tab or accordion style):
+  Tab: "Alice Chen (12 photos)" | "Bob Martinez (8 photos)" | "Sarah Kim (5 photos)"
+
+  Inside each tab: 4-column thumbnail grid
+  Each thumbnail: gray placeholder box + customer name below + date in tiny gray text
+
+  Below grid: storage info "Estimated size: 45 MB"
+
+Confirmation modal (show as visible for design purposes):
+  Title: "Confirm Permanent Deletion"
+  Body: "This will permanently delete all 25 photos from January 2025.
+         This action cannot be undone."
+  Buttons: "Cancel" secondary + "Delete All Photos" danger red
+
+== PAGE 10: /admin/users ==
+Page title: "Staff Management"
+
+Table:
+  Columns: Name | Email | Role | Status | Actions
+  Mock rows:
+    Alice Chen   | alice@company.com  | Admin | Active   | [Demote to User] [Deactivate]
+    Bob Martinez | bob@company.com    | User  | Active   | [Promote to Admin] [Deactivate]
+    Sarah Kim    | sarah@company.com  | User  | Active   | [Promote to Admin] [Deactivate]
+    David Wong   | david@company.com  | User  | Inactive | [Promote to Admin] [Reactivate]
+
+  Role badge: Admin = #FF4D00 text on #2A1500 bg, User = #9CA3AF text on #1A1A1A bg
+  Status badge: Active = green, Inactive = gray
+
+== DEVELOPMENT ORDER ==
+1. Set up Next.js 14 with TypeScript and Tailwind CSS, configure Inter font
+2. Create global color variables and base dark theme styles
+3. Build shared Layout component (sidebar + topbar)
+4. Build /login page
+5. Build /dashboard page with stat cards and coming soon section
+6. Build /reports list page
+7. Build /reports/new form page
+8. Build /customers list page
+9. Build /customers/new form page
+10. Build /customers/[id] detail page
+11. Build /export page
+12. Build /admin/photos page with mock modal visible
+13. Build /admin/users page
+
+Make all pages fully static with mock data.
+Add hover states, focus states, and transitions on all interactive elements.
+Ensure sidebar navigation highlights the active page correctly.
+Provide complete working code for every file.
+If response is cut off, I will say "continue" and you should resume exactly where you stopped.
