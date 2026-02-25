@@ -1,0 +1,34 @@
+import { withAuth } from 'next-auth/middleware';
+import { NextResponse } from 'next/server';
+
+const adminPaths = ['/dashboard', '/export', '/admin'];
+
+export default withAuth(
+    function middleware(req) {
+        const token = req.nextauth.token;
+
+        // Block deactivated users
+        if (token && token.active === false) {
+            return NextResponse.redirect(new URL('/login?error=deactivated', req.url));
+        }
+
+        // Block non-admin from admin routes
+        const isAdminRoute = adminPaths.some((p) => req.nextUrl.pathname.startsWith(p));
+        if (isAdminRoute && token?.role !== 'ADMIN') {
+            return NextResponse.redirect(new URL('/reports', req.url));
+        }
+
+        return NextResponse.next();
+    },
+    {
+        callbacks: {
+            authorized: ({ token }) => !!token,
+        },
+    }
+);
+
+export const config = {
+    matcher: [
+        '/((?!login|api/auth|api/cron|_next/static|_next/image|favicon\\.ico|kb/).*)',
+    ],
+};
