@@ -62,6 +62,7 @@ export default function NewReportPage() {
     };
 
     const todayFormatted = new Date().toLocaleDateString('en-US', {
+        timeZone: 'America/Los_Angeles',
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
 

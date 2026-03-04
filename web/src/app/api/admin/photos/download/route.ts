@@ -3,18 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import archiver from 'archiver';
+import { getToday } from '@/lib/date';
 
-function getPreviousMonth() {
-    const now = new Date();
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+function getCurrentMonth() {
+    const today = getToday();
+    return `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 export async function POST() {
     const { error } = await requireAdmin();
     if (error) return error;
 
-    const prevMonth = getPreviousMonth();
+    const prevMonth = getCurrentMonth();
 
     const photos = await prisma.customerPhoto.findMany({
         where: { photoMonth: prevMonth },
@@ -24,7 +24,14 @@ export async function POST() {
         },
     });
 
-    if (photos.length === 0) {
+    const screenshots = await prisma.callScreenshot.findMany({
+        where: { photoMonth: prevMonth },
+        include: {
+            user: { select: { name: true } },
+        },
+    });
+
+    if (photos.length === 0 && screenshots.length === 0) {
         return NextResponse.json({ error: 'No photos to download' }, { status: 404 });
     }
 
@@ -34,15 +41,31 @@ export async function POST() {
 
     archive.on('data', (chunk: Buffer) => chunks.push(chunk));
 
-    // Add each photo to the zip
+    // Add customer photos
     for (const photo of photos) {
         const staffName = (photo.staff.name || 'Unknown').replace(/[/\\]/g, '_');
         const customerName = photo.customer.name.replace(/[/\\]/g, '_');
         const fileName = `${customerName}_${photo.filename}`;
         const zipPath = `photos_${prevMonth.replace('-', '_')}/${staffName}/${fileName}`;
 
-        // Download from Supabase Storage
         const urlParts = photo.storageUrl.split('/storage/v1/object/public/uploads/');
+        const storagePath = urlParts[1] || '';
+
+        if (storagePath) {
+            const { data } = await getSupabaseAdmin().storage.from('uploads').download(storagePath);
+            if (data) {
+                const buffer = Buffer.from(await data.arrayBuffer());
+                archive.append(buffer, { name: zipPath });
+            }
+        }
+    }
+
+    // Add call screenshots
+    for (const ss of screenshots) {
+        const staffName = (ss.user.name || 'Unknown').replace(/[/\\]/g, '_');
+        const zipPath = `photos_${prevMonth.replace('-', '_')}/${staffName}/Call_Records/${ss.filename}`;
+
+        const urlParts = ss.storageUrl.split('/storage/v1/object/public/uploads/');
         const storagePath = urlParts[1] || '';
 
         if (storagePath) {

@@ -10,6 +10,7 @@ export const authOptions: NextAuthOptions = {
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID!,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            allowDangerousEmailAccountLinking: true,
         }),
     ],
     session: {
@@ -18,27 +19,45 @@ export const authOptions: NextAuthOptions = {
     pages: {
         signIn: '/login',
     },
+    events: {
+        async createUser({ user }) {
+            const userCount = await prisma.user.count();
+            if (userCount === 1) {
+                // 第一个注册的用户 → 自动成为 ADMIN + active
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { role: 'ADMIN', active: true },
+                });
+            } else {
+                // 后续用户 → 强制设为 inactive，等待管理员激活
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { active: false },
+                });
+            }
+        },
+    },
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
-                // First login — user object is available
                 const dbUser = await prisma.user.findUnique({
                     where: { email: user.email! },
-                    select: { id: true, role: true, active: true },
+                    select: { id: true, name: true, role: true, active: true },
                 });
                 if (dbUser) {
                     token.id = dbUser.id;
+                    token.name = dbUser.name;
                     token.role = dbUser.role;
                     token.active = dbUser.active;
                 }
             } else if (token.email) {
-                // Subsequent requests — refresh role/active from DB
                 const dbUser = await prisma.user.findUnique({
                     where: { email: token.email },
-                    select: { id: true, role: true, active: true },
+                    select: { id: true, name: true, role: true, active: true },
                 });
                 if (dbUser) {
                     token.id = dbUser.id;
+                    token.name = dbUser.name;
                     token.role = dbUser.role;
                     token.active = dbUser.active;
                 }
@@ -52,19 +71,6 @@ export const authOptions: NextAuthOptions = {
                 session.user.active = token.active as boolean;
             }
             return session;
-        },
-        async signIn({ user }) {
-            // Block deactivated accounts
-            if (user.email) {
-                const dbUser = await prisma.user.findUnique({
-                    where: { email: user.email },
-                    select: { active: true },
-                });
-                if (dbUser && !dbUser.active) {
-                    return false;
-                }
-            }
-            return true;
         },
     },
 };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { getToday } from '@/lib/date';
 
 export async function GET(req: NextRequest) {
     const { error, session } = await requireAuth();
@@ -15,12 +16,8 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    // User can only see own reports; admin can filter by userId
-    if (!isAdmin) {
-        where.userId = session!.user.id;
-    } else if (userId) {
-        where.userId = userId;
-    }
+    // 所有用户（包括 admin）在 /reports 页面只看自己的记录
+    where.userId = session!.user.id;
 
     if (startDate || endDate) {
         where.reportDate = {};
@@ -48,9 +45,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'tasksToday and planTomorrow are required' }, { status: 400 });
     }
 
-    // Server-enforced reportDate = today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Server-enforced reportDate = today (LA timezone)
+    const today = getToday();
 
     // Check if already submitted today
     const existing = await prisma.dailyReport.findUnique({

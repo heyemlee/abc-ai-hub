@@ -17,7 +17,7 @@ export type SourceEnum = 'WALK_IN' | 'XIAOHONGSHU' | 'META' | 'INSTAGRAM' | 'REF
 export const SOURCE_LABELS: Record<SourceEnum, string> = {
   WALK_IN: 'Walk-in',
   XIAOHONGSHU: 'Red Note',
-  META: 'Meta',
+  META: 'Facebook',
   INSTAGRAM: 'Instagram',
   REFERRAL: 'Referral',
   OTHER: 'Other',
@@ -76,6 +76,7 @@ export interface DashboardStats {
   sourceBreakdown: { source: SourceEnum; count: number; percentage: number }[];
   notSubmittedToday: { id: string; name: string | null }[];
   submittedToday: { id: string; name: string | null }[];
+  recentReports: DailyReport[];
 }
 
 export interface KBFile {

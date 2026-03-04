@@ -8,7 +8,11 @@ import DatePicker from '@/components/DatePicker';
 
 export default function ExportPage() {
     const { data: session } = useSession();
-    const todayStr = new Date().toISOString().split('T')[0];
+    // 用 LA 时区计算 "今天" 的日期字符串
+    const todayStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
     const [reportStaff, setReportStaff] = useState('');
     const [customerStaff, setCustomerStaff] = useState('');
     const [startDate, setStartDate] = useState(todayStr);
@@ -38,7 +42,7 @@ export default function ExportPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `daily-reports-${new Date().toISOString().split('T')[0]}.xlsx`;
+        a.download = `daily-reports-${todayStr}.docx`;
         a.click();
         URL.revokeObjectURL(url);
         setExportingReports(false);
@@ -83,12 +87,12 @@ export default function ExportPage() {
                         disabled={exportingReports}
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
                     >
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM11.5 14c0 .83-.67 1.5-1.5 1.5H9v1.5H7.5V11H10c.83 0 1.5.67 1.5 1.5V14zm5 1.5H15v1.5h-1.5V11H16c.83 0 1.5.67 1.5 1.5v3c0 .83-.67 1.5-1.5 1.5zm-8-3v1.5h1v-1.5H8.5zm6.5 0v3h1v-3H15z" />
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                         </svg>
-                        {exportingReports ? 'Exporting...' : 'Export to Excel'}
+                        {exportingReports ? 'Exporting...' : 'Export to Word'}
                     </button>
-                    <p className="text-[11px] text-neutral-400">Includes: Date, Staff Name, Today&apos;s Tasks, Tomorrow&apos;s Plan.</p>
+                    <p className="text-[11px] text-neutral-400">Card-style format with Date, Staff Name, Today&apos;s Tasks, Tomorrow&apos;s Plan.</p>
                 </div>
             </div>
 

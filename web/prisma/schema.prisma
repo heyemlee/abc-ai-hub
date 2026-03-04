@@ -48,19 +48,21 @@ model VerificationToken {
 // ── App models ───────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  image     String?
-  role      Role     @default(USER)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+  active        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
 
-  accounts  Account[]
-  sessions  Session[]
-  reports   DailyReport[]
-  customers Customer[]
-  photos    CustomerPhoto[]
+  accounts        Account[]
+  sessions        Session[]
+  reports         DailyReport[]
+  customers       Customer[]
+  photos          CustomerPhoto[]
+  callScreenshots CallScreenshot[]
 }
 
 enum Role {
@@ -144,4 +146,14 @@ model KBFile {
   storageUrl  String
   filename    String
   uploadedAt  DateTime @default(now())
+}
+
+model CallScreenshot {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  storageUrl String
+  filename   String
+  photoMonth String   // e.g. "2026-03"
+  createdAt  DateTime @default(now())
 }

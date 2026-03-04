@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
+import { getToday, getFirstOfMonth } from '@/lib/date';
 
 export async function GET(req: NextRequest) {
     const { error } = await requireAdmin();
@@ -9,23 +10,23 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const period = searchParams.get('period') || '1m';
 
-    // Calculate date range based on period
-    const now = new Date();
+    // Calculate date range based on period (LA timezone)
+    const today = getToday();
     let sinceDate: Date | null = null;
 
     if (period === 'today') {
-        sinceDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        sinceDate = today;
     } else if (period === '1m') {
-        sinceDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        sinceDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, today.getUTCDate()));
     } else if (period === '3m') {
-        sinceDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        sinceDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 3, today.getUTCDate()));
     }
     // 'all' => sinceDate stays null
 
     const dateFilter = sinceDate ? { createdAt: { gte: sinceDate } } : {};
 
     // Walk-in this month
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstOfMonth = getFirstOfMonth();
     const walkInThisMonth = await prisma.customer.count({
         where: { source: 'WALK_IN', createdAt: { gte: firstOfMonth } },
     });
@@ -64,9 +65,8 @@ export async function GET(req: NextRequest) {
         percentage: totalCustomers > 0 ? Math.round((g._count / totalCustomers) * 100) : 0,
     })).sort((a, b) => b.count - a.count);
 
-    // Not submitted today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Not submitted today (LA timezone)
+    const todayForReports = getToday();
 
     const allActiveUsers = await prisma.user.findMany({
         where: { active: true },
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     });
 
     const submittedToday = await prisma.dailyReport.findMany({
-        where: { reportDate: today },
+        where: { reportDate: todayForReports },
         select: { userId: true },
     });
 
@@ -82,6 +82,13 @@ export async function GET(req: NextRequest) {
     const notSubmittedToday = allActiveUsers
         .filter((u) => !submittedUserIds.has(u.id))
         .map((u) => ({ id: u.id, name: u.name }));
+
+    // Recent reports from all staff (for admin dashboard)
+    const recentReports = await prisma.dailyReport.findMany({
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { reportDate: 'desc' },
+        take: 20,
+    });
 
     return NextResponse.json({
         walkInThisMonth,
@@ -91,5 +98,6 @@ export async function GET(req: NextRequest) {
         submittedToday: allActiveUsers
             .filter((u) => submittedUserIds.has(u.id))
             .map((u) => ({ id: u.id, name: u.name })),
+        recentReports,
     });
 }

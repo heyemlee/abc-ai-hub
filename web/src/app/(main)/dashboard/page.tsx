@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { DashboardStats, SOURCE_LABELS, SourceEnum } from '@/lib/types';
 
@@ -13,20 +14,41 @@ const periodOptions = [
 
 export default function DashboardPage() {
     const { data: session } = useSession();
+    const router = useRouter();
     const [period, setPeriod] = useState('1m');
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [forbidden, setForbidden] = useState(false);
+
+    const isAdmin = (session?.user as { role?: string })?.role === 'ADMIN';
 
     useEffect(() => {
+        if (session === undefined) return; // still loading session
+        if (!isAdmin) {
+            router.replace('/reports');
+            return;
+        }
         setLoading(true);
+        setForbidden(false);
         fetch(`/api/dashboard/stats?period=${period}`)
-            .then((r) => r.json())
-            .then((data) => { setStats(data); setLoading(false); })
+            .then((r) => {
+                if (!r.ok) { setForbidden(true); setLoading(false); return null; }
+                return r.json();
+            })
+            .then((data) => { if (data) { setStats(data); setLoading(false); } })
             .catch(() => setLoading(false));
-    }, [period]);
+    }, [period, isAdmin, session, router]);
 
-    if (loading || !stats) {
+    if (loading) {
         return <div className="flex items-center justify-center h-64 text-neutral-400 text-sm">Loading...</div>;
+    }
+
+    if (forbidden) {
+        return <div className="flex items-center justify-center h-64 text-neutral-400 text-sm">No data available.</div>;
+    }
+
+    if (!stats) {
+        return <div className="flex items-center justify-center h-64 text-neutral-400 text-sm">No data available.</div>;
     }
 
     const allUsers = [...stats.submittedToday, ...stats.notSubmittedToday];
@@ -108,6 +130,48 @@ export default function DashboardPage() {
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
+
+            {/* Staff Daily Reports */}
+            <div className="rounded-xl border border-[#E5E5E5] bg-white p-6">
+                <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                    Staff Daily Reports
+                </p>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-[#FAFAFA]">
+                                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Date</th>
+                                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Staff</th>
+                                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Today&apos;s Tasks</th>
+                                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Tomorrow&apos;s Plan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {stats.recentReports.map((report) => (
+                                <tr key={report.id} className="border-t border-[#E5E5E5] transition-colors hover:bg-[#FAFAFA]">
+                                    <td className="whitespace-nowrap px-4 py-3 text-sm text-neutral-700">
+                                        {new Date(report.reportDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                                    </td>
+                                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-black">
+                                        {report.user?.name || 'Unknown'}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-neutral-600">
+                                        {report.tasksToday.length > 60 ? report.tasksToday.substring(0, 60) + '...' : report.tasksToday}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-neutral-600">
+                                        {report.planTomorrow.length > 60 ? report.planTomorrow.substring(0, 60) + '...' : report.planTomorrow}
+                                    </td>
+                                </tr>
+                            ))}
+                            {stats.recentReports.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-8 text-center text-sm text-neutral-400">No reports submitted yet</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

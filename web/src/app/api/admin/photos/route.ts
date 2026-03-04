@@ -2,24 +2,34 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { getToday } from '@/lib/date';
 
-function getPreviousMonth() {
-    const now = new Date();
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+function getCurrentMonth() {
+    const today = getToday();
+    return `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 export async function GET() {
     const { error } = await requireAdmin();
     if (error) return error;
 
-    const prevMonth = getPreviousMonth();
+    const prevMonth = getCurrentMonth();
 
+    // Customer photos
     const photos = await prisma.customerPhoto.findMany({
         where: { photoMonth: prevMonth },
         include: {
             staff: { select: { id: true, name: true } },
             customer: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    // Call screenshots
+    const screenshots = await prisma.callScreenshot.findMany({
+        where: { photoMonth: prevMonth },
+        include: {
+            user: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
     });
@@ -33,6 +43,7 @@ export async function GET() {
             filename: string;
             customerName: string;
             createdAt: Date;
+            type: 'customer' | 'screenshot';
         }>;
     }> = {};
 
@@ -47,6 +58,22 @@ export async function GET() {
             filename: p.filename,
             customerName: p.customer.name,
             createdAt: p.createdAt,
+            type: 'customer',
+        });
+    });
+
+    screenshots.forEach((s) => {
+        const staffId = s.userId;
+        if (!grouped[staffId]) {
+            grouped[staffId] = { staffName: s.user.name || 'Unknown', photos: [] };
+        }
+        grouped[staffId].photos.push({
+            id: s.id,
+            storageUrl: s.storageUrl,
+            filename: s.filename,
+            customerName: 'Call Record',
+            createdAt: s.createdAt,
+            type: 'screenshot',
         });
     });
 
@@ -63,16 +90,21 @@ export async function DELETE() {
     const { error, session } = await requireAdmin();
     if (error) return error;
 
-    const prevMonth = getPreviousMonth();
+    const prevMonth = getCurrentMonth();
 
     const photos = await prisma.customerPhoto.findMany({
         where: { photoMonth: prevMonth },
         select: { id: true, storageUrl: true },
     });
 
+    const screenshots = await prisma.callScreenshot.findMany({
+        where: { photoMonth: prevMonth },
+        select: { id: true, storageUrl: true },
+    });
+
     // Delete from Supabase Storage
-    const paths = photos.map((p) => {
-        // Extract path from public URL
+    const allItems = [...photos, ...screenshots];
+    const paths = allItems.map((p) => {
         const urlParts = p.storageUrl.split('/storage/v1/object/public/uploads/');
         return urlParts[1] || '';
     }).filter(Boolean);
@@ -83,6 +115,9 @@ export async function DELETE() {
 
     // Delete from database
     await prisma.customerPhoto.deleteMany({
+        where: { photoMonth: prevMonth },
+    });
+    await prisma.callScreenshot.deleteMany({
         where: { photoMonth: prevMonth },
     });
 

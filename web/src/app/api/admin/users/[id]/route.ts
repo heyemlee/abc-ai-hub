@@ -17,8 +17,12 @@ export async function PATCH(
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Prevent deactivating admin users
+    if (user.role === 'ADMIN' && body.active === false) {
+        return NextResponse.json({ error: 'Cannot deactivate admin users' }, { status: 403 });
+    }
+
     const updateData: Record<string, unknown> = {};
-    if (body.role !== undefined) updateData.role = body.role;
     if (body.active !== undefined) updateData.active = body.active;
 
     const updated = await prisma.user.update({

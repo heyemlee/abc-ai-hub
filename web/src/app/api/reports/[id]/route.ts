@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { getToday } from '@/lib/date';
 
 export async function PATCH(
     req: NextRequest,
@@ -21,11 +22,10 @@ export async function PATCH(
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Only today's report can be edited
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Only today's report can be edited (LA timezone)
+    const today = getToday();
     const reportDate = new Date(report.reportDate);
-    reportDate.setHours(0, 0, 0, 0);
+    reportDate.setUTCHours(0, 0, 0, 0);
 
     if (reportDate.getTime() !== today.getTime()) {
         return NextResponse.json({ error: 'Can only edit today\'s report' }, { status: 403 });

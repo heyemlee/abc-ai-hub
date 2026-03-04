@@ -19,10 +19,14 @@ interface UploadedFile {
 export default function ReportsPage() {
     const router = useRouter();
     const { data: session } = useSession();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const getLADateStr = () => new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    const todayStr = getLADateStr();
     const [staff, setStaff] = useState('');
-    const [startDate, setStartDate] = useState(todayStr);
-    const [endDate, setEndDate] = useState(todayStr);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [reports, setReports] = useState<DailyReport[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -39,27 +43,15 @@ export default function ReportsPage() {
     const fetchReports = useCallback(() => {
         setLoading(true);
         const params = new URLSearchParams();
-        if (staff) params.set('userId', staff);
         if (startDate) params.set('startDate', startDate);
         if (endDate) params.set('endDate', endDate);
         fetch(`/api/reports?${params}`)
             .then((r) => r.json())
             .then((data) => { setReports(data); setLoading(false); })
             .catch(() => setLoading(false));
-    }, [staff, startDate, endDate]);
+    }, [startDate, endDate]);
 
     useEffect(() => { fetchReports(); }, [fetchReports]);
-
-    useEffect(() => {
-        if (isAdmin) {
-            fetch('/api/admin/users').then((r) => r.json()).then(setUsers).catch(() => { });
-        }
-    }, [isAdmin]);
-
-    const staffOptions = [
-        { value: '', label: 'All Staff' },
-        ...users.map((u) => ({ value: u.id, label: u.name || u.email })),
-    ];
 
     const truncate = (text: string, maxLen: number) =>
         text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
@@ -98,19 +90,30 @@ export default function ReportsPage() {
         setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
     };
 
-    const handleSubmitUpload = () => {
-        // TODO: implement file upload to a general screenshots endpoint
-        setUploadSuccess(true);
-        setTimeout(() => {
-            setUploadSuccess(false);
-            setUploadedFiles([]);
-            setShowUpload(false);
-        }, 2000);
+    const handleSubmitUpload = async () => {
+        if (uploadedFiles.length === 0) return;
+        setUploadSuccess(false);
+        const formData = new FormData();
+        uploadedFiles.forEach((f) => formData.append('files', f.file));
+
+        try {
+            const res = await fetch('/api/screenshots', { method: 'POST', body: formData });
+            if (res.ok) {
+                setUploadSuccess(true);
+                setTimeout(() => {
+                    setUploadSuccess(false);
+                    setUploadedFiles([]);
+                    setShowUpload(false);
+                }, 2000);
+            }
+        } catch {
+            // silently fail for now
+        }
     };
 
     const canEdit = (report: DailyReport) => {
-        const today = new Date().toISOString().split('T')[0];
-        const reportDate = new Date(report.reportDate).toISOString().split('T')[0];
+        const today = getLADateStr();
+        const reportDate = new Date(report.reportDate).toLocaleDateString('en-CA', { timeZone: 'UTC' });
         return report.userId === session?.user?.id && reportDate === today;
     };
 
@@ -221,12 +224,6 @@ export default function ReportsPage() {
 
             {/* Filter Bar */}
             <div className="flex flex-wrap items-center gap-4">
-                {isAdmin && (
-                    <div>
-                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Staff</label>
-                        <Select options={staffOptions} value={staff} onChange={setStaff} placeholder="All Staff" />
-                    </div>
-                )}
                 <div>
                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Start Date</label>
                     <DatePicker value={startDate} onChange={setStartDate} placeholder="Start date" />
@@ -255,7 +252,7 @@ export default function ReportsPage() {
                         <tbody>
                             {reports.map((report) => (
                                 <tr key={report.id} className="cursor-pointer border-t border-[#E5E5E5] transition-colors hover:bg-[#FAFAFA]">
-                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-700">{new Date(report.reportDate).toLocaleDateString('en-US')}</td>
+                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-700">{new Date(report.reportDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</td>
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-700">{report.user?.name}</td>
                                     <td className="px-6 py-4 text-sm text-neutral-600">{truncate(report.tasksToday, 80)}</td>
                                     <td className="px-6 py-4 text-sm text-neutral-600">{truncate(report.planTomorrow, 80)}</td>
