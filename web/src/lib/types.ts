@@ -11,28 +11,40 @@ export interface User {
 }
 
 // Source values matching Prisma enum
-export type SourceEnum = 'WALK_IN' | 'XIAOHONGSHU' | 'META' | 'INSTAGRAM' | 'REFERRAL' | 'OTHER';
+export type SourceEnum = 'WALK_IN' | 'XIAOHONGSHU' | 'INSTAGRAM_FACEBOOK' | 'REFERRAL' | 'EMAIL_MARKETING' | 'GOOGLE' | 'OTHER';
 
 // Display labels for source enum
 export const SOURCE_LABELS: Record<SourceEnum, string> = {
   WALK_IN: 'Walk-in',
   XIAOHONGSHU: 'Red Note',
-  META: 'Facebook',
-  INSTAGRAM: 'Instagram',
+  INSTAGRAM_FACEBOOK: 'Instagram / Facebook',
   REFERRAL: 'Referral',
+  EMAIL_MARKETING: 'Email Marketing',
+  GOOGLE: 'Google Search / Map',
   OTHER: 'Other',
 };
 
 // Status values matching Prisma enum
-export type StatusEnum = 'INTERESTED' | 'FOLLOWING_UP' | 'QUOTED' | 'CLOSED_WON' | 'LOST';
+export type StatusEnum = 'ASKING_QUOTE' | 'DRAWING' | 'IN_PROGRESS' | 'KEEP_CONTACT' | 'ON_HOLD' | 'ORDERED' | 'OTHERS';
 
 export const STATUS_LABELS: Record<StatusEnum, string> = {
-  INTERESTED: 'Interested',
-  FOLLOWING_UP: 'Following Up',
-  QUOTED: 'Quoted',
-  CLOSED_WON: 'Closed Won',
-  LOST: 'Lost',
+  ASKING_QUOTE: 'Asking Quote',
+  DRAWING: 'Drawing',
+  IN_PROGRESS: 'In Progress',
+  KEEP_CONTACT: 'Keep Contact',
+  ON_HOLD: 'On Hold',
+  ORDERED: 'Ordered',
+  OTHERS: 'Others',
 };
+
+export interface StatusHistoryItem {
+  id: string;
+  fromStatus: StatusEnum | null;
+  toStatus: StatusEnum;
+  note: string | null;
+  createdAt: string;
+  user: { name: string | null };
+}
 
 export interface Customer {
   id: string;
@@ -48,6 +60,7 @@ export interface Customer {
   updatedAt: string;
   _count?: { photos: number };
   photos?: CustomerPhoto[];
+  statusHistory?: StatusHistoryItem[];
 }
 
 export interface CustomerPhoto {
@@ -72,7 +85,7 @@ export interface DailyReport {
 
 export interface DashboardStats {
   walkInThisMonth: number;
-  closedWonByStaff: { name: string | null; count: number }[];
+  orderedByStaff: { name: string | null; count: number }[];
   sourceBreakdown: { source: SourceEnum; count: number; percentage: number }[];
   notSubmittedToday: { id: string; name: string | null }[];
   submittedToday: { id: string; name: string | null }[];
@@ -90,3 +103,72 @@ export interface KBFile {
   filename: string;
   uploadedAt: string;
 }
+
+// ── Case types ──────────────────────────────────────
+
+export type CaseStatusEnum = 'ASKING_QUOTE' | 'DRAWING' | 'IN_PROGRESS' | 'ON_HOLD' | 'ORDERED' | 'CANCELLED';
+
+export const CASE_STATUS_LABELS: Record<CaseStatusEnum, string> = {
+  ASKING_QUOTE: 'Asking Quote',
+  DRAWING: 'Drawing',
+  IN_PROGRESS: 'In Progress',
+  ON_HOLD: 'On Hold',
+  ORDERED: 'Ordered',
+  CANCELLED: 'Cancelled',
+};
+
+export type CaseMemberRole = 'OWNER' | 'COLLABORATOR';
+
+export interface CaseMember {
+  id: string;
+  userId: string;
+  role: CaseMemberRole;
+  addedAt: string;
+  user: { id: string; name: string | null; email: string };
+}
+
+export interface CaseStatusHistoryItem {
+  id: string;
+  fromStatus: CaseStatusEnum | null;
+  toStatus: CaseStatusEnum;
+  note: string | null;
+  createdAt: string;
+  user: { name: string | null };
+}
+
+export interface CasePhoto {
+  id: string;
+  storageUrl: string;
+  filename: string;
+  caption: string | null;
+  createdAt: string;
+  uploader?: { name: string | null };
+}
+
+export interface CaseActivity {
+  id: string;
+  type: string;
+  content: string | null;
+  createdAt: string;
+  user: { name: string | null };
+}
+
+export interface CaseItem {
+  id: string;
+  title: string;
+  clientName: string;
+  clientPhone: string | null;
+  clientEmail: string | null;
+  createdById: string;
+  createdBy: { id: string; name: string | null };
+  status: CaseStatusEnum;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+  members: CaseMember[];
+  statusHistory?: CaseStatusHistoryItem[];
+  photos?: CasePhoto[];
+  activities?: CaseActivity[];
+  _count?: { photos: number; activities: number };
+}
+

@@ -30,21 +30,13 @@ export async function GET(req: NextRequest) {
         orderBy: { reportDate: 'desc' },
     });
 
-    const noBorder = {
-        top: { style: BorderStyle.NONE, size: 0 },
-        bottom: { style: BorderStyle.NONE, size: 0 },
-        left: { style: BorderStyle.NONE, size: 0 },
-        right: { style: BorderStyle.NONE, size: 0 },
-    };
-
     const thinBorder = {
-        top: { style: BorderStyle.SINGLE, size: 1, color: 'DDDDDD' },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'DDDDDD' },
-        left: { style: BorderStyle.SINGLE, size: 1, color: 'DDDDDD' },
-        right: { style: BorderStyle.SINGLE, size: 1, color: 'DDDDDD' },
+        top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+        left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+        right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
     };
 
-    // Build report cards
     const children: Paragraph[] = [];
 
     // Title
@@ -68,102 +60,6 @@ export async function GET(req: NextRequest) {
         ],
     }));
 
-    for (const report of reports) {
-        const dateStr = new Date(report.reportDate).toLocaleDateString('en-US', {
-            timeZone: 'UTC',
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        });
-        const staffName = report.user.name || 'Unknown';
-
-        // Card-style table for each report
-        const cardTable = new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: thinBorder,
-            rows: [
-                // Header row: Staff name only
-                new TableRow({
-                    children: [
-                        new TableCell({
-                            borders: thinBorder,
-                            shading: { type: ShadingType.SOLID, color: 'F5F5F5' },
-                            columnSpan: 2,
-                            children: [
-                                new Paragraph({
-                                    spacing: { before: 80, after: 80 },
-                                    children: [
-                                        new TextRun({ text: 'SUBMITTED BY', bold: true, size: 14, color: '999999', font: 'Arial' }),
-                                    ],
-                                }),
-                                new Paragraph({
-                                    spacing: { after: 80 },
-                                    children: [
-                                        new TextRun({ text: staffName, size: 20, font: 'Arial', bold: true }),
-                                    ],
-                                }),
-                            ],
-                        }),
-                    ],
-                }),
-                // Today's Tasks
-                new TableRow({
-                    children: [
-                        new TableCell({
-                            borders: thinBorder,
-                            columnSpan: 2,
-                            children: [
-                                new Paragraph({
-                                    spacing: { before: 120, after: 60 },
-                                    children: [
-                                        new TextRun({ text: "TODAY'S TASKS COMPLETED", bold: true, size: 14, color: '999999', font: 'Arial' }),
-                                    ],
-                                }),
-                                ...report.tasksToday.split('\n').map(line =>
-                                    new Paragraph({
-                                        spacing: { after: 40 },
-                                        children: [
-                                            new TextRun({ text: line || ' ', size: 19, font: 'Arial' }),
-                                        ],
-                                    })
-                                ),
-                                new Paragraph({ spacing: { after: 40 }, children: [] }),
-                            ],
-                        }),
-                    ],
-                }),
-                // Tomorrow's Plan
-                new TableRow({
-                    children: [
-                        new TableCell({
-                            borders: thinBorder,
-                            columnSpan: 2,
-                            children: [
-                                new Paragraph({
-                                    spacing: { before: 120, after: 60 },
-                                    children: [
-                                        new TextRun({ text: "TOMORROW'S PLAN", bold: true, size: 14, color: '999999', font: 'Arial' }),
-                                    ],
-                                }),
-                                ...report.planTomorrow.split('\n').map(line =>
-                                    new Paragraph({
-                                        spacing: { after: 40 },
-                                        children: [
-                                            new TextRun({ text: line || ' ', size: 19, font: 'Arial' }),
-                                        ],
-                                    })
-                                ),
-                                new Paragraph({ spacing: { after: 40 }, children: [] }),
-                            ],
-                        }),
-                    ],
-                }),
-            ],
-        });
-
-        children.push(new Paragraph({ spacing: { before: 0 }, children: [] }));
-        children.push(cardTable as unknown as Paragraph);
-        children.push(new Paragraph({ spacing: { after: 300 }, children: [] }));
-    }
-
     if (reports.length === 0) {
         children.push(new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -172,6 +68,124 @@ export async function GET(req: NextRequest) {
                 new TextRun({ text: 'No reports found for the selected period.', size: 22, color: '999999', font: 'Arial' }),
             ],
         }));
+    } else {
+        // Build a single consolidated table with header + one row per report
+        const headerRow = new TableRow({
+            tableHeader: true,
+            children: [
+                new TableCell({
+                    borders: thinBorder,
+                    shading: { type: ShadingType.SOLID, color: '222222' },
+                    width: { size: 20, type: WidthType.PERCENTAGE },
+                    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                    children: [
+                        new Paragraph({
+                            spacing: { before: 60, after: 60 },
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                                new TextRun({ text: 'Name', bold: true, size: 26, color: 'FFFFFF', font: 'Arial' }),
+                            ],
+                        }),
+                    ],
+                }),
+                new TableCell({
+                    borders: thinBorder,
+                    shading: { type: ShadingType.SOLID, color: '222222' },
+                    width: { size: 40, type: WidthType.PERCENTAGE },
+                    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                    children: [
+                        new Paragraph({
+                            spacing: { before: 60, after: 60 },
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                                new TextRun({ text: "Today's Task", bold: true, size: 26, color: 'FFFFFF', font: 'Arial' }),
+                            ],
+                        }),
+                    ],
+                }),
+                new TableCell({
+                    borders: thinBorder,
+                    shading: { type: ShadingType.SOLID, color: '222222' },
+                    width: { size: 40, type: WidthType.PERCENTAGE },
+                    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                    children: [
+                        new Paragraph({
+                            spacing: { before: 60, after: 60 },
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                                new TextRun({ text: "Tomorrow's Task", bold: true, size: 26, color: 'FFFFFF', font: 'Arial' }),
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
+
+        const dataRows = reports.map((report, idx) => {
+            const staffName = report.user.name || 'Unknown';
+            const rowShading = idx % 2 === 1
+                ? { type: ShadingType.SOLID, color: 'F7F7F7' } as const
+                : undefined;
+
+            return new TableRow({
+                children: [
+                    // Column 1: Name
+                    new TableCell({
+                        borders: thinBorder,
+                        ...(rowShading ? { shading: rowShading } : {}),
+                        margins: { top: 100, bottom: 100, left: 120, right: 120 },
+                        verticalAlign: 'center' as unknown as undefined,
+                        children: [
+                            new Paragraph({
+                                spacing: { before: 60, after: 60 },
+                                children: [
+                                    new TextRun({ text: staffName, bold: true, size: 24, font: 'Arial' }),
+                                ],
+                            }),
+                        ],
+                    }),
+                    // Column 2: Today's Task
+                    new TableCell({
+                        borders: thinBorder,
+                        ...(rowShading ? { shading: rowShading } : {}),
+                        margins: { top: 100, bottom: 100, left: 120, right: 120 },
+                        children: [
+                            ...report.tasksToday.split('\n').map(line =>
+                                new Paragraph({
+                                    spacing: { before: 40, after: 40 },
+                                    children: [
+                                        new TextRun({ text: line || ' ', size: 24, font: 'Arial' }),
+                                    ],
+                                })
+                            ),
+                        ],
+                    }),
+                    // Column 3: Tomorrow's Task
+                    new TableCell({
+                        borders: thinBorder,
+                        ...(rowShading ? { shading: rowShading } : {}),
+                        margins: { top: 100, bottom: 100, left: 120, right: 120 },
+                        children: [
+                            ...report.planTomorrow.split('\n').map(line =>
+                                new Paragraph({
+                                    spacing: { before: 40, after: 40 },
+                                    children: [
+                                        new TextRun({ text: line || ' ', size: 24, font: 'Arial' }),
+                                    ],
+                                })
+                            ),
+                        ],
+                    }),
+                ],
+            });
+        });
+
+        const table = new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [headerRow, ...dataRows],
+        });
+
+        children.push(table as unknown as Paragraph);
     }
 
     const doc = new Document({

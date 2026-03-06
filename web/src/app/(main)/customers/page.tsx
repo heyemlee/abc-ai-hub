@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Customer, User, SOURCE_LABELS, STATUS_LABELS, SourceEnum, StatusEnum } from '@/lib/types';
-import StatusBadge from '@/components/StatusBadge';
+import StatusBadge, { BadgeStatus } from '@/components/StatusBadge';
 import Select from '@/components/Select';
 
 const sourceOptions = [
@@ -18,7 +18,7 @@ const statusOptions = [
     ...Object.entries(STATUS_LABELS).map(([k, v]) => ({ value: k, label: v })),
 ];
 
-const STATUS_ORDER = ['INTERESTED', 'FOLLOWING_UP', 'QUOTED', 'CLOSED_WON', 'LOST'];
+const STATUS_ORDER = ['ASKING_QUOTE', 'DRAWING', 'IN_PROGRESS', 'KEEP_CONTACT', 'ON_HOLD', 'ORDERED', 'OTHERS'];
 
 type SortKey = 'source' | 'status' | 'createdAt';
 type SortDir = 'asc' | 'desc';
@@ -45,6 +45,7 @@ export default function CustomersPage() {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showClosed, setShowClosed] = useState(false);
 
     const fetchCustomers = useCallback(() => {
         setLoading(true);
@@ -81,8 +82,16 @@ export default function CustomersPage() {
         }
     };
 
+    const closedCount = useMemo(() =>
+        customers.filter((c) => c.status === 'ORDERED' || c.status === 'OTHERS').length,
+        [customers]
+    );
+
     const sorted = useMemo(() => {
-        const list = [...customers];
+        let list = [...customers];
+        if (!showClosed) {
+            list = list.filter((c) => c.status !== 'ORDERED' && c.status !== 'OTHERS');
+        }
         if (sortKey) {
             list.sort((a, b) => {
                 let av: string | number, bv: string | number;
@@ -102,14 +111,33 @@ export default function CustomersPage() {
             });
         }
         return list;
-    }, [customers, sortKey, sortDir]);
+    }, [customers, sortKey, sortDir, showClosed]);
 
     const thClass = (key: SortKey) =>
         `cursor-pointer select-none px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-widest transition-colors ${sortKey === key ? 'text-black' : 'text-neutral-400 hover:text-black'}`;
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-end gap-3">
+                <button
+                    onClick={() => setShowClosed(!showClosed)}
+                    className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-[13px] font-medium transition-all ${showClosed
+                        ? 'border-black bg-black text-white hover:bg-neutral-800'
+                        : 'border-[#E5E5E5] text-neutral-500 hover:border-neutral-400 hover:text-black'
+                        }`}
+                >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        {showClosed
+                            ? <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            : <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178zM15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        }
+                    </svg>
+                    {showClosed ? 'Hide' : 'Show'} Closed
+                    {closedCount > 0 && (
+                        <span className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold ${showClosed ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500'
+                            }`}>{closedCount}</span>
+                    )}
+                </button>
                 <Link href="/customers/new">
                     <button className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
                         Add New Customer
@@ -161,14 +189,23 @@ export default function CustomersPage() {
                                 <tr key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer border-t border-[#E5E5E5] transition-colors hover:bg-[#FAFAFA]">
                                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-black">{customer.name}</td>
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-600">{SOURCE_LABELS[customer.source as SourceEnum] || customer.source}</td>
-                                    <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={customer.status.toLowerCase() as 'interested' | 'following_up' | 'quoted' | 'closed_won' | 'lost'} /></td>
+                                    <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={customer.status.toLowerCase() as BadgeStatus} /></td>
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-600">{customer.phone}</td>
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-600">{customer.user?.name}</td>
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-600">{new Date(customer.createdAt).toLocaleDateString('en-US')}</td>
                                     <td className="whitespace-nowrap px-6 py-4">
-                                        <Link href={`/customers/${customer.id}`}>
-                                            <button className="rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-[12px] font-medium text-neutral-600 hover:border-black hover:text-black">View</button>
-                                        </Link>
+                                        <div className="flex items-center gap-2">
+                                            <Link href={`/customers/${customer.id}`} onClick={(e) => e.stopPropagation()}>
+                                                <button className="rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-[12px] font-medium text-neutral-600 hover:border-black hover:text-black">View</button>
+                                            </Link>
+                                            {(isAdmin || customer.userId === session?.user?.id) && (
+                                                <Link href={`/customers/${customer.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                                                    <button className="rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-[12px] font-medium text-neutral-600 hover:border-black hover:text-black">
+                                                        Edit
+                                                    </button>
+                                                </Link>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

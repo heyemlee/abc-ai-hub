@@ -17,7 +17,7 @@ export default function NewCustomerPage() {
     const router = useRouter();
     const [name, setName] = useState('');
     const [source, setSource] = useState('');
-    const [status, setStatus] = useState('INTERESTED');
+    const [status, setStatus] = useState('ASKING_QUOTE');
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [notes, setNotes] = useState('');

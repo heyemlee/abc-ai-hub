@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Customer, User, SOURCE_LABELS, STATUS_LABELS, SourceEnum, StatusEnum } from '@/lib/types';
 import Select from '@/components/Select';
-import StatusBadge from '@/components/StatusBadge';
+import StatusBadge, { BadgeStatus } from '@/components/StatusBadge';
 
-const activeColumns: StatusEnum[] = ['INTERESTED', 'FOLLOWING_UP', 'QUOTED'];
-const closedColumns: StatusEnum[] = ['CLOSED_WON', 'LOST'];
+const activeColumns: StatusEnum[] = ['ASKING_QUOTE', 'DRAWING', 'IN_PROGRESS', 'KEEP_CONTACT', 'ON_HOLD'];
+const closedColumns: StatusEnum[] = ['ORDERED', 'OTHERS'];
 const allColumns: StatusEnum[] = [...activeColumns, ...closedColumns];
 
 export default function PipelinePage() {
@@ -50,7 +50,7 @@ export default function PipelinePage() {
         return acc;
     }, {} as Record<StatusEnum, Customer[]>);
 
-    const closedCount = (grouped['CLOSED_WON']?.length || 0) + (grouped['LOST']?.length || 0);
+    const closedCount = (grouped['ORDERED']?.length || 0) + (grouped['OTHERS']?.length || 0);
     const visibleColumns = showClosed ? allColumns : activeColumns;
 
     if (loading) {
@@ -97,11 +97,11 @@ export default function PipelinePage() {
                     });
 
                     return (
-                        <div key={status} className="min-w-[280px] flex-1">
+                        <div key={status} className="min-w-[220px] flex-1">
                             {/* Column Header */}
                             <div className="mb-4 flex items-center justify-between rounded-xl bg-[#F5F5F5] px-5 py-4">
                                 <div className="flex items-center gap-3">
-                                    <StatusBadge status={status.toLowerCase() as 'interested' | 'following_up' | 'quoted' | 'closed_won' | 'lost'} />
+                                    <StatusBadge status={status.toLowerCase() as BadgeStatus} />
                                     <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-white px-2 text-[13px] font-semibold text-neutral-500 shadow-sm">{items.length}</span>
                                 </div>
                                 {needsAttention.length > 0 && (

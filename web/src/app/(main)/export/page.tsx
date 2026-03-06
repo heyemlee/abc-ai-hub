@@ -92,7 +92,7 @@ export default function ExportPage() {
                         </svg>
                         {exportingReports ? 'Exporting...' : 'Export to Word'}
                     </button>
-                    <p className="text-[11px] text-neutral-400">Card-style format with Date, Staff Name, Today&apos;s Tasks, Tomorrow&apos;s Plan.</p>
+                    <p className="text-[11px] text-neutral-400">Table format with Name, Today&apos;s Task, Tomorrow&apos;s Task columns.</p>
                 </div>
             </div>
 

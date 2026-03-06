@@ -11,7 +11,7 @@ const pageTitles: Record<string, string> = {
     '/customers/new': 'Add New Customer',
     '/export': 'Export Data',
     '/pipeline': 'Pipeline',
-    '/knowledge': 'Knowledge Base',
+    '/knowledge': 'Docs',
     '/admin/photos': 'Photo Management',
     '/admin/users': 'Staff Management',
 };
@@ -22,21 +22,17 @@ export default function TopBar() {
 
     let title = pageTitles[pathname] || '';
     if (pathname.startsWith('/customers/') && pathname !== '/customers/new') {
-        title = 'Customer Details';
+        title = pathname.endsWith('/edit') ? 'Edit Customer' : 'Customer Details';
+    }
+    if (pathname.startsWith('/reports/') && pathname !== '/reports/new' && !pageTitles[pathname]) {
+        title = 'Report Details';
     }
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[#E5E5E5] bg-white px-8">
             <h1 className="text-sm font-semibold text-black">{title}</h1>
-            <div className="flex items-center gap-4">
-                <span className="text-[13px] text-neutral-500">{session?.user?.name}</span>
-                <button
-                    onClick={() => signOut({ callbackUrl: '/login' })}
-                    className="rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-[12px] font-medium text-neutral-600 transition-colors hover:border-black hover:text-black"
-                >
-                    Logout
-                </button>
-            </div>
+            {/* Top right space reserved for page-specific actions instead of user profile */}
+            <div className="flex items-center gap-4"></div>
         </header>
     );
 }

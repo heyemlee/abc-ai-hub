@@ -264,7 +264,11 @@ export default function ReportsPage() {
                                                 </button>
                                             </Link>
                                         ) : (
-                                            <span className="text-[12px] text-neutral-400">View</span>
+                                            <Link href={`/reports/${report.id}`}>
+                                                <button className="rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-[12px] font-medium text-neutral-600 hover:border-black hover:text-black">
+                                                    View
+                                                </button>
+                                            </Link>
                                         )}
                                     </td>
                                 </tr>

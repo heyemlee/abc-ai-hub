@@ -3,6 +3,27 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { getToday } from '@/lib/date';
 
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const { error } = await requireAuth();
+    if (error) return error;
+
+    const { id } = await params;
+
+    const report = await prisma.dailyReport.findUnique({
+        where: { id },
+        include: { user: { select: { id: true, name: true } } },
+    });
+
+    if (!report) {
+        return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(report);
+}
+
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }

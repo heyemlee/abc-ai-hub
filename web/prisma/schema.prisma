@@ -57,12 +57,18 @@ model User {
   active        Boolean   @default(false)
   createdAt     DateTime  @default(now())
 
-  accounts        Account[]
-  sessions        Session[]
-  reports         DailyReport[]
-  customers       Customer[]
-  photos          CustomerPhoto[]
-  callScreenshots CallScreenshot[]
+  accounts           Account[]
+  sessions           Session[]
+  reports            DailyReport[]
+  customers          Customer[]
+  photos             CustomerPhoto[]
+  callScreenshots    CallScreenshot[]
+  statusHistories    StatusHistory[]
+  createdCases       Case[]              @relation("CaseCreator")
+  caseMembers        CaseMember[]
+  caseStatusChanges  CaseStatusHistory[]
+  casePhotos         CasePhoto[]
+  caseActivities     CaseActivity[]
 }
 
 enum Role {
@@ -84,35 +90,51 @@ model DailyReport {
 }
 
 model Customer {
-  id        String         @id @default(cuid())
-  userId    String
-  user      User           @relation(fields: [userId], references: [id])
-  name      String
-  source    Source
-  status    Status         @default(INTERESTED)
-  phone     String?
-  email     String?
-  notes     String?
-  photos    CustomerPhoto[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id             String          @id @default(cuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
+  name           String
+  source         Source
+  status         Status          @default(ASKING_QUOTE)
+  phone          String?
+  email          String?
+  notes          String?
+  photos         CustomerPhoto[]
+  statusHistory  StatusHistory[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 enum Source {
   WALK_IN
   XIAOHONGSHU
-  META
-  INSTAGRAM
+  INSTAGRAM_FACEBOOK
   REFERRAL
+  EMAIL_MARKETING
+  GOOGLE
   OTHER
 }
 
 enum Status {
-  INTERESTED
-  FOLLOWING_UP
-  QUOTED
-  CLOSED_WON
-  LOST
+  ASKING_QUOTE
+  DRAWING
+  IN_PROGRESS
+  KEEP_CONTACT
+  ON_HOLD
+  ORDERED
+  OTHERS
+}
+
+model StatusHistory {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  fromStatus Status?
+  toStatus   Status
+  note       String?
+  createdAt  DateTime @default(now())
 }
 
 model CustomerPhoto {
@@ -156,4 +178,86 @@ model CallScreenshot {
   filename   String
   photoMonth String   // e.g. "2026-03"
   createdAt  DateTime @default(now())
+}
+
+// ── Case Management ──────────────────────────────────────
+
+model Case {
+  id          String     @id @default(cuid())
+  title       String
+  clientName  String
+  clientPhone String?
+  clientEmail String?
+  createdById String
+  createdBy   User       @relation("CaseCreator", fields: [createdById], references: [id])
+  status      CaseStatus @default(ASKING_QUOTE)
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  members       CaseMember[]
+  statusHistory CaseStatusHistory[]
+  photos        CasePhoto[]
+  activities    CaseActivity[]
+}
+
+enum CaseStatus {
+  ASKING_QUOTE
+  DRAWING
+  IN_PROGRESS
+  ON_HOLD
+  ORDERED
+  CANCELLED
+}
+
+model CaseMember {
+  id     String         @id @default(cuid())
+  caseId String
+  case   Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId String
+  user   User           @relation(fields: [userId], references: [id])
+  role   CaseMemberRole @default(COLLABORATOR)
+  addedAt DateTime      @default(now())
+
+  @@unique([caseId, userId])
+}
+
+enum CaseMemberRole {
+  OWNER
+  COLLABORATOR
+}
+
+model CaseStatusHistory {
+  id         String      @id @default(cuid())
+  caseId     String
+  case       Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  fromStatus CaseStatus?
+  toStatus   CaseStatus
+  note       String?
+  createdAt  DateTime    @default(now())
+}
+
+model CasePhoto {
+  id         String   @id @default(cuid())
+  caseId     String
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  uploadedBy String
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
+  storageUrl String
+  filename   String
+  caption    String?
+  createdAt  DateTime @default(now())
+}
+
+model CaseActivity {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "note" | "status_change" | "photo_upload" | "member_added" | "member_removed"
+  content   String?
+  createdAt DateTime @default(now())
 }

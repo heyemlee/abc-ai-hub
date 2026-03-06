@@ -31,14 +31,14 @@ export async function GET(req: NextRequest) {
         where: { source: 'WALK_IN', createdAt: { gte: firstOfMonth } },
     });
 
-    // Closed won by staff (in period)
-    const closedWon = await prisma.customer.groupBy({
+    // Ordered by staff (in period)
+    const ordered = await prisma.customer.groupBy({
         by: ['userId'],
-        where: { status: 'CLOSED_WON', ...dateFilter },
+        where: { status: 'ORDERED', ...dateFilter },
         _count: true,
     });
 
-    const staffIds = closedWon.map((c) => c.userId);
+    const staffIds = ordered.map((c) => c.userId);
     const staffUsers = staffIds.length > 0
         ? await prisma.user.findMany({
             where: { id: { in: staffIds } },
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         })
         : [];
 
-    const closedWonByStaff = closedWon.map((c) => ({
+    const orderedByStaff = ordered.map((c) => ({
         name: staffUsers.find((u) => u.id === c.userId)?.name || 'Unknown',
         count: c._count,
     })).sort((a, b) => b.count - a.count);
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
         walkInThisMonth,
-        closedWonByStaff,
+        orderedByStaff,
         sourceBreakdown,
         notSubmittedToday,
         submittedToday: allActiveUsers

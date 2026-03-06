@@ -20,6 +20,10 @@ export async function GET(
                 orderBy: { createdAt: 'desc' },
                 include: { staff: { select: { name: true } } },
             },
+            statusHistory: {
+                orderBy: { createdAt: 'desc' },
+                include: { user: { select: { name: true } } },
+            },
         },
     });
 
@@ -56,6 +60,19 @@ export async function PATCH(
     const body = await req.json();
     const { name, source, status, phone, email, notes } = body;
 
+    // If status is changing, record history
+    if (status !== undefined && status !== customer.status) {
+        await prisma.statusHistory.create({
+            data: {
+                customerId: id,
+                userId: session!.user.id,
+                fromStatus: customer.status,
+                toStatus: status,
+                note: body.statusNote || null,
+            },
+        });
+    }
+
     const updated = await prisma.customer.update({
         where: { id },
         data: {
@@ -69,6 +86,10 @@ export async function PATCH(
         include: {
             user: { select: { id: true, name: true } },
             _count: { select: { photos: true } },
+            statusHistory: {
+                orderBy: { createdAt: 'desc' },
+                include: { user: { select: { name: true } } },
+            },
         },
     });
 

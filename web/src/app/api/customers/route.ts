@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
             userId: session!.user.id,
             name,
             source,
-            status: status || 'INTERESTED',
+            status: status || 'ASKING_QUOTE',
             phone,
             email,
             notes,
