@@ -157,11 +157,6 @@ export default function CasesPage() {
                                 }`}>{closedCount}</span>
                         )}
                     </button>
-                    <Link href="/cases/new">
-                        <button className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
-                            New Case
-                        </button>
-                    </Link>
                 </div>
             </div>
 

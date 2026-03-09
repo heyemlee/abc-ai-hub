@@ -1,15 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function NewCasePage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Pre-fill from URL params (coming from Customer detail page)
+    const preCustomerId = searchParams.get('customerId') || '';
+    const preClientName = searchParams.get('clientName') || '';
+    const preClientPhone = searchParams.get('clientPhone') || '';
+    const preClientEmail = searchParams.get('clientEmail') || '';
+
     const [title, setTitle] = useState('');
-    const [clientName, setClientName] = useState('');
-    const [clientPhone, setClientPhone] = useState('');
-    const [clientEmail, setClientEmail] = useState('');
+    const [clientName, setClientName] = useState(preClientName);
+    const [clientPhone, setClientPhone] = useState(preClientPhone);
+    const [clientEmail, setClientEmail] = useState(preClientEmail);
     const [description, setDescription] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -37,6 +45,7 @@ export default function NewCasePage() {
                     clientPhone: clientPhone.trim() || null,
                     clientEmail: clientEmail.trim() || null,
                     description: description.trim() || null,
+                    customerId: preCustomerId || null,
                 }),
             });
 
@@ -68,6 +77,17 @@ export default function NewCasePage() {
                 <h1 className="mb-6 text-lg font-semibold text-black">Create New Case</h1>
 
                 <div className="space-y-5">
+                    {preCustomerId && (
+                        <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3">
+                            <svg className="h-5 w-5 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.03a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.34 8.374" />
+                            </svg>
+                            <p className="text-sm text-blue-700">
+                                This case will be linked to customer <strong>{preClientName}</strong>
+                            </p>
+                        </div>
+                    )}
+
                     {error && (
                         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</div>
                     )}

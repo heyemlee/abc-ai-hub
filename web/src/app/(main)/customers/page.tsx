@@ -18,7 +18,7 @@ const statusOptions = [
     ...Object.entries(STATUS_LABELS).map(([k, v]) => ({ value: k, label: v })),
 ];
 
-const STATUS_ORDER = ['ASKING_QUOTE', 'DRAWING', 'IN_PROGRESS', 'KEEP_CONTACT', 'ON_HOLD', 'ORDERED', 'OTHERS'];
+const STATUS_ORDER = ['ASKING_QUOTE', 'DRAWING', 'IN_PROGRESS', 'ON_HOLD', 'ORDERED', 'OTHERS'];
 
 type SortKey = 'source' | 'status' | 'createdAt';
 type SortDir = 'asc' | 'desc';
@@ -194,18 +194,9 @@ export default function CustomersPage() {
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-600">{customer.user?.name}</td>
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-600">{new Date(customer.createdAt).toLocaleDateString('en-US')}</td>
                                     <td className="whitespace-nowrap px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <Link href={`/customers/${customer.id}`} onClick={(e) => e.stopPropagation()}>
-                                                <button className="rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-[12px] font-medium text-neutral-600 hover:border-black hover:text-black">View</button>
-                                            </Link>
-                                            {(isAdmin || customer.userId === session?.user?.id) && (
-                                                <Link href={`/customers/${customer.id}/edit`} onClick={(e) => e.stopPropagation()}>
-                                                    <button className="rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-[12px] font-medium text-neutral-600 hover:border-black hover:text-black">
-                                                        Edit
-                                                    </button>
-                                                </Link>
-                                            )}
-                                        </div>
+                                        <Link href={`/customers/${customer.id}`} onClick={(e) => e.stopPropagation()}>
+                                            <button className="rounded-md border border-[#E5E5E5] bg-white px-3 py-1 text-[12px] font-medium text-neutral-600 hover:border-black hover:text-black">View</button>
+                                        </Link>
                                     </td>
                                 </tr>
                             ))}

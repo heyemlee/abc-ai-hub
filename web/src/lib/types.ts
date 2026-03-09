@@ -25,13 +25,12 @@ export const SOURCE_LABELS: Record<SourceEnum, string> = {
 };
 
 // Status values matching Prisma enum
-export type StatusEnum = 'ASKING_QUOTE' | 'DRAWING' | 'IN_PROGRESS' | 'KEEP_CONTACT' | 'ON_HOLD' | 'ORDERED' | 'OTHERS';
+export type StatusEnum = 'ASKING_QUOTE' | 'DRAWING' | 'IN_PROGRESS' | 'ON_HOLD' | 'ORDERED' | 'OTHERS';
 
 export const STATUS_LABELS: Record<StatusEnum, string> = {
   ASKING_QUOTE: 'Asking Quote',
   DRAWING: 'Drawing',
   IN_PROGRESS: 'In Progress',
-  KEEP_CONTACT: 'Keep Contact',
   ON_HOLD: 'On Hold',
   ORDERED: 'Ordered',
   OTHERS: 'Others',
@@ -61,6 +60,7 @@ export interface Customer {
   _count?: { photos: number };
   photos?: CustomerPhoto[];
   statusHistory?: StatusHistoryItem[];
+  cases?: CaseItem[];
 }
 
 export interface CustomerPhoto {
@@ -159,6 +159,8 @@ export interface CaseItem {
   clientName: string;
   clientPhone: string | null;
   clientEmail: string | null;
+  customerId: string | null;
+  customer?: { id: string; name: string } | null;
   createdById: string;
   createdBy: { id: string; name: string | null };
   status: CaseStatusEnum;

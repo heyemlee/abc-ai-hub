@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl;
     const status = searchParams.get('status');
+    const customerId = searchParams.get('customerId');
 
     const isAdmin = session!.user.role === 'ADMIN';
     const userId = session!.user.id;
@@ -21,11 +22,13 @@ export async function GET(req: NextRequest) {
     }
 
     if (status) where.status = status;
+    if (customerId) where.customerId = customerId;
 
     const cases = await prisma.case.findMany({
         where,
         include: {
             createdBy: { select: { id: true, name: true } },
+            customer: { select: { id: true, name: true } },
             members: {
                 include: {
                     user: { select: { id: true, name: true, email: true } },
@@ -44,7 +47,7 @@ export async function POST(req: NextRequest) {
     if (error) return error;
 
     const body = await req.json();
-    const { title, clientName, clientPhone, clientEmail, description } = body;
+    const { title, clientName, clientPhone, clientEmail, description, customerId } = body;
 
     if (!title || !clientName) {
         return NextResponse.json({ error: 'title and clientName are required' }, { status: 400 });
@@ -59,6 +62,7 @@ export async function POST(req: NextRequest) {
             clientName,
             clientPhone: clientPhone || null,
             clientEmail: clientEmail || null,
+            customerId: customerId || null,
             createdById: userId,
             description: description || null,
             members: {
@@ -77,6 +81,7 @@ export async function POST(req: NextRequest) {
         },
         include: {
             createdBy: { select: { id: true, name: true } },
+            customer: { select: { id: true, name: true } },
             members: {
                 include: {
                     user: { select: { id: true, name: true, email: true } },

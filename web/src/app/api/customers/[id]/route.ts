@@ -24,6 +24,18 @@ export async function GET(
                 orderBy: { createdAt: 'desc' },
                 include: { user: { select: { name: true } } },
             },
+            cases: {
+                orderBy: { updatedAt: 'desc' },
+                include: {
+                    members: {
+                        include: {
+                            user: { select: { id: true, name: true, email: true } },
+                        },
+                    },
+                    createdBy: { select: { id: true, name: true } },
+                    _count: { select: { photos: true, activities: true } },
+                },
+            },
         },
     });
 

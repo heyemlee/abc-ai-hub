@@ -316,23 +316,54 @@ export default function CaseDetailPage() {
                 {/* Left Column */}
                 <div className="lg:col-span-3 space-y-6">
                     {/* Client Info */}
-                    <div className="rounded-xl border border-[#E5E5E5] p-6">
-                        <p className="mb-5 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Client Information</p>
-                        <div className="grid grid-cols-2 gap-5">
-                            <div>
-                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Name</p>
-                                <p className="text-sm font-medium text-black">{caseData.clientName}</p>
+                    {caseData.customer ? (
+                        <a
+                            href={`/customers/${caseData.customer.id}`}
+                            className="group block rounded-xl border border-[#E5E5E5] p-6 transition-all hover:border-neutral-300 hover:shadow-md cursor-pointer"
+                        >
+                            <div className="mb-5 flex items-center justify-between">
+                                <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Client Information</p>
+                                <span className="flex items-center gap-1.5 text-[12px] font-medium text-neutral-400 transition-colors group-hover:text-black">
+                                    View Customer Profile
+                                    <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                    </svg>
+                                </span>
                             </div>
-                            <div>
-                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Phone</p>
-                                <p className="text-sm text-neutral-700">{caseData.clientPhone || '—'}</p>
+                            <div className="grid grid-cols-2 gap-5">
+                                <div>
+                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Name</p>
+                                    <p className="text-sm font-medium text-black group-hover:text-neutral-700">{caseData.clientName}</p>
+                                </div>
+                                <div>
+                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Phone</p>
+                                    <p className="text-sm text-neutral-700">{caseData.clientPhone || '—'}</p>
+                                </div>
+                                <div>
+                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Email</p>
+                                    <p className="text-sm text-neutral-700">{caseData.clientEmail || '—'}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Email</p>
-                                <p className="text-sm text-neutral-700">{caseData.clientEmail || '—'}</p>
+                        </a>
+                    ) : (
+                        <div className="rounded-xl border border-[#E5E5E5] p-6">
+                            <p className="mb-5 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Client Information</p>
+                            <div className="grid grid-cols-2 gap-5">
+                                <div>
+                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Name</p>
+                                    <p className="text-sm font-medium text-black">{caseData.clientName}</p>
+                                </div>
+                                <div>
+                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Phone</p>
+                                    <p className="text-sm text-neutral-700">{caseData.clientPhone || '—'}</p>
+                                </div>
+                                <div>
+                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Email</p>
+                                    <p className="text-sm text-neutral-700">{caseData.clientEmail || '—'}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Description */}
                     {caseData.description && (

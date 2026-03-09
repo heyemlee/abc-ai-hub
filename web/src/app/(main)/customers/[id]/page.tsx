@@ -21,7 +21,6 @@ function getStatusColor(status: string): string {
         ASKING_QUOTE: '#F59E0B',
         DRAWING: '#3B82F6',
         IN_PROGRESS: '#10B981',
-        KEEP_CONTACT: '#8B5CF6',
         ON_HOLD: '#EF4444',
         ORDERED: '#171717',
         OTHERS: '#6B7280',
@@ -57,6 +56,13 @@ export default function CustomerDetailPage() {
     const [editEmail, setEditEmail] = useState('');
     const [editNotes, setEditNotes] = useState('');
     const [saving, setSaving] = useState(false);
+
+    // New case modal state
+    const [showNewCase, setShowNewCase] = useState(false);
+    const [newCaseTitle, setNewCaseTitle] = useState('');
+    const [newCaseDesc, setNewCaseDesc] = useState('');
+    const [creatingCase, setCreatingCase] = useState(false);
+    const [caseError, setCaseError] = useState('');
 
     useEffect(() => {
         fetch(`/api/customers/${params.id}`)
@@ -175,219 +181,204 @@ export default function CustomerDetailPage() {
                 </button>
             </div>
 
-            {/* Customer Name & Current Status */}
+            {/* ═══ Combined Card: Name + Status + Progress + Customer Details ═══ */}
             <div className="rounded-xl border border-[#E5E5E5] p-6">
-                <div className="flex items-center justify-between">
+                {/* Row 1: Name + Status Dropdown */}
+                <div className="flex items-start justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-semibold text-black">{customer.name}</h1>
                         <p className="mt-1 text-sm text-neutral-500">
-                            {SOURCE_LABELS[customer.source as SourceEnum] || customer.source} · Created by {customer.user?.name} on {new Date(customer.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                            Created by {customer.user?.name} on {new Date(customer.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                     </div>
-                    <StatusBadge status={status.toLowerCase() as BadgeStatus} />
-                </div>
-            </div>
-
-            {/* Progress Flow Tracker — only if status is part of the main flow */}
-            {currentFlowIndex >= 0 && (
-                <div className="rounded-xl border border-[#E5E5E5] p-6">
-                    <p className="mb-5 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Progress</p>
-                    <div className="flex items-center">
-                        {STATUS_FLOW.map((flowStatus, idx) => {
-                            const isCompleted = idx <= currentFlowIndex;
-                            const isCurrent = idx === currentFlowIndex;
-                            const color = getStatusColor(flowStatus);
-
-                            return (
-                                <div key={flowStatus} className="flex flex-1 items-center">
-                                    <div className="flex flex-col items-center gap-2 flex-1">
-                                        <div
-                                            className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${isCurrent ? 'ring-4 ring-opacity-20' : ''}`}
-                                            style={{
-                                                borderColor: isCompleted ? color : '#E5E5E5',
-                                                backgroundColor: isCompleted ? color : 'white',
-                                                boxShadow: isCurrent ? `0 0 0 4px ${color}33` : 'none',
-                                            }}
-                                        >
-                                            {isCompleted ? (
-                                                <svg className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                </svg>
-                                            ) : (
-                                                <span className="text-xs font-semibold text-neutral-300">{idx + 1}</span>
-                                            )}
-                                        </div>
-                                        <span className={`text-[12px] font-medium text-center ${isCurrent ? 'text-black' : isCompleted ? 'text-neutral-600' : 'text-neutral-300'}`}>
-                                            {STATUS_LABELS[flowStatus]}
-                                        </span>
-                                    </div>
-                                    {idx < STATUS_FLOW.length - 1 && (
-                                        <div className="flex-1 -mt-6 mx-1">
-                                            <div className="h-0.5 w-full rounded-full" style={{ backgroundColor: idx < currentFlowIndex ? color : '#E5E5E5' }} />
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                    <div className="shrink-0 w-48">
+                        <Select options={statusOptions} value={status} onChange={handleStatusChange} />
                     </div>
                 </div>
-            )}
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-                {/* Left Column: Info + Status Change */}
-                <div className="lg:col-span-3 space-y-6">
-                    {/* Customer Info — Inline Editable */}
-                    <div className="rounded-xl border border-[#E5E5E5] p-6">
-                        <div className="mb-5 flex items-center justify-between">
-                            <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Customer Details</p>
-                            {!editing ? (
-                                <button
-                                    onClick={startEditing}
-                                    className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] px-3 py-1.5 text-[12px] font-medium text-neutral-500 transition-colors hover:border-black hover:text-black"
-                                >
-                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                                    </svg>
-                                    Edit
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={saveEditing}
-                                        disabled={saving || !editName.trim() || !editSource}
-                                        className="rounded-lg bg-black px-3 py-1.5 text-[12px] font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-                                    >
-                                        {saving ? 'Saving...' : 'Save'}
-                                    </button>
-                                    <button
-                                        onClick={cancelEditing}
-                                        className="rounded-lg border border-[#E5E5E5] px-3 py-1.5 text-[12px] font-medium text-neutral-500 hover:border-black hover:text-black"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            )}
+                {/* Progress Tracker */}
+                {currentFlowIndex >= 0 && (
+                    <div className="mt-5 pt-5 border-t border-[#F0F0F0]">
+                        <div className="flex items-center">
+                            {STATUS_FLOW.map((flowStatus, idx) => {
+                                const isCompleted = idx <= currentFlowIndex;
+                                const isCurrent = idx === currentFlowIndex;
+                                const color = getStatusColor(flowStatus);
+                                return (
+                                    <div key={flowStatus} className="flex flex-1 items-center">
+                                        <div className="flex flex-col items-center gap-2 flex-1">
+                                            <div
+                                                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${isCurrent ? 'ring-4 ring-opacity-20' : ''}`}
+                                                style={{
+                                                    borderColor: isCompleted ? color : '#E5E5E5',
+                                                    backgroundColor: isCompleted ? color : 'white',
+                                                    boxShadow: isCurrent ? `0 0 0 4px ${color}33` : 'none',
+                                                }}
+                                            >
+                                                {isCompleted ? (
+                                                    <svg className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                    </svg>
+                                                ) : (
+                                                    <span className="text-xs font-semibold text-neutral-300">{idx + 1}</span>
+                                                )}
+                                            </div>
+                                            <span className={`text-[12px] font-medium text-center ${isCurrent ? 'text-black' : isCompleted ? 'text-neutral-600' : 'text-neutral-300'}`}>
+                                                {STATUS_LABELS[flowStatus]}
+                                            </span>
+                                        </div>
+                                        {idx < STATUS_FLOW.length - 1 && (
+                                            <div className="flex-1 -mt-6 mx-1">
+                                                <div className="h-0.5 w-full rounded-full" style={{ backgroundColor: idx < currentFlowIndex ? color : '#E5E5E5' }} />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
+                    </div>
+                )}
 
+                {/* Status change confirmation */}
+                {showNoteInput && (
+                    <div className="mt-4 space-y-3 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+                        <div className="flex items-center gap-2">
+                            <StatusBadge status={status.toLowerCase() as BadgeStatus} />
+                            <svg className="h-4 w-4 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                            <StatusBadge status={pendingStatus.toLowerCase() as BadgeStatus} />
+                        </div>
+                        <textarea
+                            rows={2}
+                            value={statusNote}
+                            onChange={(e) => setStatusNote(e.target.value)}
+                            className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
+                            placeholder="Add a note about this change (optional)..."
+                        />
+                        <div className="flex gap-2">
+                            <button onClick={confirmStatusChange} className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
+                                Confirm Change
+                            </button>
+                            <button onClick={cancelStatusChange} className="rounded-lg border border-[#E5E5E5] px-4 py-2 text-sm font-medium text-neutral-600 hover:border-black hover:text-black">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Customer Details */}
+                <div className="mt-5 pt-5 border-t border-[#F0F0F0]">
+                    <div className="mb-4 flex items-center justify-between">
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Details</p>
                         {!editing ? (
-                            /* View Mode */
-                            <div className="grid grid-cols-2 gap-5">
+                            <button
+                                onClick={startEditing}
+                                className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] px-3 py-1.5 text-[12px] font-medium text-neutral-500 transition-colors hover:border-black hover:text-black"
+                            >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                                </svg>
+                                Edit
+                            </button>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={saveEditing}
+                                    disabled={saving || !editName.trim() || !editSource}
+                                    className="rounded-lg bg-black px-3 py-1.5 text-[12px] font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+                                >
+                                    {saving ? 'Saving...' : 'Save'}
+                                </button>
+                                <button
+                                    onClick={cancelEditing}
+                                    className="rounded-lg border border-[#E5E5E5] px-3 py-1.5 text-[12px] font-medium text-neutral-500 hover:border-black hover:text-black"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {!editing ? (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                            <div>
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Phone</p>
+                                <p className="text-sm text-neutral-700">{customer.phone || '—'}</p>
+                            </div>
+                            <div>
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Email</p>
+                                <p className="text-sm text-neutral-700">{customer.email || '—'}</p>
+                            </div>
+                            <div>
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Source</p>
+                                <p className="text-sm text-neutral-700">{SOURCE_LABELS[customer.source as SourceEnum] || customer.source}</p>
+                            </div>
+                            <div className="col-span-2 lg:col-span-4">
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Notes</p>
+                                <p className="text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap">{customer.notes || '—'}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Name</p>
-                                    <p className="text-sm font-medium text-black">{customer.name}</p>
+                                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                                        Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editName}
+                                        onChange={(e) => setEditName(e.target.value)}
+                                        className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
+                                    />
                                 </div>
                                 <div>
-                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Source</p>
-                                    <p className="text-sm text-neutral-700">{SOURCE_LABELS[customer.source as SourceEnum] || customer.source}</p>
-                                </div>
-                                <div>
-                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Phone</p>
-                                    <p className="text-sm text-neutral-700">{customer.phone || '—'}</p>
-                                </div>
-                                <div>
-                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Email</p>
-                                    <p className="text-sm text-neutral-700">{customer.email || '—'}</p>
-                                </div>
-                                <div className="col-span-2">
-                                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Notes</p>
-                                    <p className="text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap">{customer.notes || '—'}</p>
+                                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                                        Source <span className="text-red-500">*</span>
+                                    </label>
+                                    <Select options={sourceOptions} value={editSource} onChange={setEditSource} />
                                 </div>
                             </div>
-                        ) : (
-                            /* Edit Mode */
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
-                                            Name <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editName}
-                                            onChange={(e) => setEditName(e.target.value)}
-                                            className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
-                                            Source <span className="text-red-500">*</span>
-                                        </label>
-                                        <Select options={sourceOptions} value={editSource} onChange={setEditSource} />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Phone</label>
-                                        <input
-                                            type="tel"
-                                            value={editPhone}
-                                            onChange={(e) => setEditPhone(e.target.value)}
-                                            className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
-                                            placeholder="(000) 000-0000"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Email</label>
-                                        <input
-                                            type="email"
-                                            value={editEmail}
-                                            onChange={(e) => setEditEmail(e.target.value)}
-                                            className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
-                                            placeholder="email@example.com"
-                                        />
-                                    </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Phone</label>
+                                    <input
+                                        type="tel"
+                                        value={editPhone}
+                                        onChange={(e) => setEditPhone(e.target.value)}
+                                        className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
+                                        placeholder="(000) 000-0000"
+                                    />
                                 </div>
                                 <div>
-                                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Notes</label>
-                                    <textarea
-                                        rows={3}
-                                        value={editNotes}
-                                        onChange={(e) => setEditNotes(e.target.value)}
-                                        className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
-                                        placeholder="Budget, style preference, measurements, etc."
+                                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Email</label>
+                                    <input
+                                        type="email"
+                                        value={editEmail}
+                                        onChange={(e) => setEditEmail(e.target.value)}
+                                        className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
+                                        placeholder="email@example.com"
                                     />
                                 </div>
                             </div>
-                        )}
-                    </div>
-
-                    {/* Update Status */}
-                    <div className="rounded-xl border border-[#E5E5E5] p-6">
-                        <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Update Status</p>
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1">
-                                <Select options={statusOptions} value={status} onChange={handleStatusChange} />
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Notes</label>
+                                <textarea
+                                    rows={3}
+                                    value={editNotes}
+                                    onChange={(e) => setEditNotes(e.target.value)}
+                                    className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
+                                    placeholder="Budget, style preference, measurements, etc."
+                                />
                             </div>
                         </div>
+                    )}
+                </div>
+            </div>
 
-                        {/* Status change note */}
-                        {showNoteInput && (
-                            <div className="mt-4 space-y-3 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-                                <div className="flex items-center gap-2">
-                                    <StatusBadge status={status.toLowerCase() as BadgeStatus} />
-                                    <svg className="h-4 w-4 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-                                    <StatusBadge status={pendingStatus.toLowerCase() as BadgeStatus} />
-                                </div>
-                                <textarea
-                                    rows={2}
-                                    value={statusNote}
-                                    onChange={(e) => setStatusNote(e.target.value)}
-                                    className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
-                                    placeholder="Add a note about this change (optional)..."
-                                />
-                                <div className="flex gap-2">
-                                    <button onClick={confirmStatusChange} className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">
-                                        Confirm Change
-                                    </button>
-                                    <button onClick={cancelStatusChange} className="rounded-lg border border-[#E5E5E5] px-4 py-2 text-sm font-medium text-neutral-600 hover:border-black hover:text-black">
-                                        Cancel
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Status History Timeline */}
+            {/* ═══ Two Column Grid: Status History | Related Cases + Photos ═══ */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+                {/* Left Column: Status History */}
+                <div className="lg:col-span-3">
                     <div className="rounded-xl border border-[#E5E5E5] p-6">
                         <p className="mb-5 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Status History</p>
 
@@ -395,17 +386,13 @@ export default function CustomerDetailPage() {
                             <div className="py-8 text-center text-sm text-neutral-300">No status changes recorded yet</div>
                         ) : (
                             <div className="relative">
-                                {/* Timeline line */}
                                 <div className="absolute left-[15px] top-2 bottom-2 w-[2px] bg-[#E5E5E5]" />
-
                                 <div className="space-y-0">
                                     {history.map((item: StatusHistoryItem, idx: number) => {
                                         const color = getStatusColor(item.toStatus);
                                         const isLatest = idx === 0;
-
                                         return (
                                             <div key={item.id} className="relative flex gap-4 pb-6 last:pb-0">
-                                                {/* Timeline dot */}
                                                 <div className="relative z-10 flex-shrink-0">
                                                     <div
                                                         className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${isLatest ? 'ring-4 ring-opacity-15' : ''}`}
@@ -424,8 +411,6 @@ export default function CustomerDetailPage() {
                                                         )}
                                                     </div>
                                                 </div>
-
-                                                {/* Content */}
                                                 <div className="flex-1 rounded-lg pt-1">
                                                     <div className="flex flex-wrap items-center gap-2">
                                                         {item.fromStatus && (
@@ -454,8 +439,68 @@ export default function CustomerDetailPage() {
                     </div>
                 </div>
 
-                {/* Right Column: Photos */}
-                <div className="lg:col-span-2">
+                {/* Right Column: Related Cases + Photos */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Related Cases */}
+                    <div className="rounded-xl border border-[#E5E5E5] p-6">
+                        <div className="mb-4 flex items-center justify-between">
+                            <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Related Cases</p>
+                            <button
+                                onClick={() => { setShowNewCase(true); setNewCaseTitle(''); setNewCaseDesc(''); setCaseError(''); }}
+                                className="flex items-center gap-1.5 rounded-lg bg-black px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-neutral-800"
+                            >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                New Case
+                            </button>
+                        </div>
+
+                        {customer.cases && customer.cases.length > 0 ? (
+                            <div className="space-y-2.5">
+                                {customer.cases.map((c) => {
+                                    const statusConfig: Record<string, { bg: string; text: string }> = {
+                                        ASKING_QUOTE: { bg: '#FEF3C7', text: '#92400E' },
+                                        DRAWING: { bg: '#DBEAFE', text: '#1E40AF' },
+                                        IN_PROGRESS: { bg: '#D1FAE5', text: '#065F46' },
+                                        ON_HOLD: { bg: '#FEE2E2', text: '#991B1B' },
+                                        ORDERED: { bg: '#171717', text: '#FFFFFF' },
+                                        CANCELLED: { bg: '#F0F0F0', text: '#525252' },
+                                    };
+                                    const sc = statusConfig[c.status] || { bg: '#F0F0F0', text: '#525252' };
+                                    const caseStatusLabels: Record<string, string> = {
+                                        ASKING_QUOTE: 'Asking Quote', DRAWING: 'Drawing', IN_PROGRESS: 'In Progress',
+                                        ON_HOLD: 'On Hold', ORDERED: 'Ordered', CANCELLED: 'Cancelled',
+                                    };
+                                    return (
+                                        <a
+                                            key={c.id}
+                                            href={`/cases/${c.id}`}
+                                            className="group flex items-center justify-between rounded-lg border border-[#E5E5E5] p-3 transition-all hover:border-neutral-300 hover:shadow-sm"
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-black group-hover:text-neutral-700 truncate">{c.title}</p>
+                                                <p className="mt-0.5 text-[11px] text-neutral-400">
+                                                    {new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    {c.members && c.members.length > 0 && ` · ${c.members.length} member${c.members.length > 1 ? 's' : ''}`}
+                                                </p>
+                                            </div>
+                                            <span
+                                                className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border shrink-0"
+                                                style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.bg }}
+                                            >
+                                                {caseStatusLabels[c.status] || c.status}
+                                            </span>
+                                        </a>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="py-6 text-center text-sm text-neutral-300">No cases yet</div>
+                        )}
+                    </div>
+
+                    {/* Photos */}
                     <div className="rounded-xl border border-[#E5E5E5] p-6">
                         <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Photos</p>
                         <div className="grid grid-cols-3 gap-3">
@@ -474,7 +519,7 @@ export default function CustomerDetailPage() {
                                 </div>
                             ))}
                             {(!customer.photos || customer.photos.length === 0) && (
-                                <div className="col-span-3 py-8 text-center text-[12px] text-neutral-300">No photos yet</div>
+                                <div className="col-span-3 py-6 text-center text-[12px] text-neutral-300">No photos yet</div>
                             )}
                         </div>
                         <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
@@ -488,6 +533,106 @@ export default function CustomerDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* New Case Modal */}
+            {showNewCase && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowNewCase(false)}>
+                    <div className="w-full max-w-lg mx-4 rounded-xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-5">
+                            <h2 className="text-lg font-semibold text-black">New Case</h2>
+                            <button onClick={() => setShowNewCase(false)} className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-[#F5F5F5] hover:text-black">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-2 mb-5 rounded-lg border border-blue-200 bg-blue-50/50 px-3 py-2.5">
+                            <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.03a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.34 8.374" />
+                            </svg>
+                            <p className="text-[13px] text-blue-700">Linked to <strong>{customer.name}</strong></p>
+                        </div>
+
+                        {caseError && (
+                            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{caseError}</div>
+                        )}
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                                    Case Title <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newCaseTitle}
+                                    onChange={(e) => setNewCaseTitle(e.target.value)}
+                                    className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-2.5 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
+                                    placeholder="e.g. Kitchen Remodel, Bathroom Vanity"
+                                    autoFocus
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                                    Description <span className="text-neutral-300">(optional)</span>
+                                </label>
+                                <textarea
+                                    rows={3}
+                                    value={newCaseDesc}
+                                    onChange={(e) => setNewCaseDesc(e.target.value)}
+                                    className="w-full rounded-lg border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-black placeholder-neutral-300 hover:border-neutral-400 focus:border-black focus:outline-none"
+                                    placeholder="Project details, scope, materials..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-5 flex items-center gap-3">
+                            <button
+                                onClick={async () => {
+                                    if (!newCaseTitle.trim()) { setCaseError('Case title is required'); return; }
+                                    setCreatingCase(true);
+                                    setCaseError('');
+                                    try {
+                                        const res = await fetch('/api/cases', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                title: newCaseTitle.trim(),
+                                                clientName: customer.name,
+                                                clientPhone: customer.phone || null,
+                                                clientEmail: customer.email || null,
+                                                description: newCaseDesc.trim() || null,
+                                                customerId: customer.id,
+                                            }),
+                                        });
+                                        if (!res.ok) {
+                                            const data = await res.json();
+                                            setCaseError(data.error || 'Failed to create case');
+                                            setCreatingCase(false);
+                                            return;
+                                        }
+                                        const newCase = await res.json();
+                                        router.push(`/cases/${newCase.id}`);
+                                    } catch {
+                                        setCaseError('Network error');
+                                    }
+                                    setCreatingCase(false);
+                                }}
+                                disabled={creatingCase}
+                                className="flex-1 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+                            >
+                                {creatingCase ? 'Creating...' : 'Create Case'}
+                            </button>
+                            <button
+                                onClick={() => setShowNewCase(false)}
+                                className="rounded-lg border border-[#E5E5E5] px-4 py-2.5 text-sm font-medium text-neutral-600 hover:border-black hover:text-black"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Lightbox Modal */}
             {lightboxUrl && (

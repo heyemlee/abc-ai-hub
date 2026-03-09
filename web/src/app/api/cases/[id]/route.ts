@@ -21,6 +21,7 @@ async function isOwnerOrAdmin(caseId: string, userId: string, isAdmin: boolean) 
 
 const fullCaseInclude = {
     createdBy: { select: { id: true, name: true } },
+    customer: { select: { id: true, name: true } },
     members: {
         include: {
             user: { select: { id: true, name: true, email: true } },

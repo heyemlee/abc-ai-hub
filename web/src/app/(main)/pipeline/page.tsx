@@ -7,7 +7,7 @@ import { Customer, User, SOURCE_LABELS, STATUS_LABELS, SourceEnum, StatusEnum } 
 import Select from '@/components/Select';
 import StatusBadge, { BadgeStatus } from '@/components/StatusBadge';
 
-const activeColumns: StatusEnum[] = ['ASKING_QUOTE', 'DRAWING', 'IN_PROGRESS', 'KEEP_CONTACT', 'ON_HOLD'];
+const activeColumns: StatusEnum[] = ['ASKING_QUOTE', 'DRAWING', 'IN_PROGRESS', 'ON_HOLD'];
 const closedColumns: StatusEnum[] = ['ORDERED', 'OTHERS'];
 const allColumns: StatusEnum[] = [...activeColumns, ...closedColumns];
 

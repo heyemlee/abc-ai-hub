@@ -101,6 +101,7 @@ model Customer {
   notes          String?
   photos         CustomerPhoto[]
   statusHistory  StatusHistory[]
+  cases          Case[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -119,7 +120,6 @@ enum Status {
   ASKING_QUOTE
   DRAWING
   IN_PROGRESS
-  KEEP_CONTACT
   ON_HOLD
   ORDERED
   OTHERS
@@ -188,6 +188,8 @@ model Case {
   clientName  String
   clientPhone String?
   clientEmail String?
+  customerId  String?
+  customer    Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   createdById String
   createdBy   User       @relation("CaseCreator", fields: [createdById], references: [id])
   status      CaseStatus @default(ASKING_QUOTE)
