@@ -5,6 +5,7 @@ import { getToday } from '@/lib/date';
 import {
     Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
     WidthType, BorderStyle, AlignmentType, ShadingType,
+    Header, Footer, PageNumber,
 } from 'docx';
 
 export async function GET(req: NextRequest) {
@@ -39,15 +40,6 @@ export async function GET(req: NextRequest) {
 
     const children: Paragraph[] = [];
 
-    // Title
-    children.push(new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 400 },
-        children: [
-            new TextRun({ text: 'Daily Reports', bold: true, size: 36, font: 'Arial' }),
-        ],
-    }));
-
     // Subtitle with date range
     const rangeText = startDate && endDate
         ? `${startDate} — ${endDate}`
@@ -75,7 +67,7 @@ export async function GET(req: NextRequest) {
             children: [
                 new TableCell({
                     borders: thinBorder,
-                    shading: { type: ShadingType.SOLID, color: '222222' },
+                    shading: { type: ShadingType.SOLID, color: 'D9D9D9' },
                     width: { size: 20, type: WidthType.PERCENTAGE },
                     margins: { top: 80, bottom: 80, left: 120, right: 120 },
                     children: [
@@ -83,14 +75,14 @@ export async function GET(req: NextRequest) {
                             spacing: { before: 60, after: 60 },
                             alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun({ text: 'Name', bold: true, size: 26, color: 'FFFFFF', font: 'Arial' }),
+                                new TextRun({ text: 'Name', bold: true, size: 26, color: '000000', font: 'Arial' }),
                             ],
                         }),
                     ],
                 }),
                 new TableCell({
                     borders: thinBorder,
-                    shading: { type: ShadingType.SOLID, color: '222222' },
+                    shading: { type: ShadingType.SOLID, color: 'D9D9D9' },
                     width: { size: 40, type: WidthType.PERCENTAGE },
                     margins: { top: 80, bottom: 80, left: 120, right: 120 },
                     children: [
@@ -98,14 +90,14 @@ export async function GET(req: NextRequest) {
                             spacing: { before: 60, after: 60 },
                             alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun({ text: "Today's Task", bold: true, size: 26, color: 'FFFFFF', font: 'Arial' }),
+                                new TextRun({ text: "Today's Task", bold: true, size: 26, color: '000000', font: 'Arial' }),
                             ],
                         }),
                     ],
                 }),
                 new TableCell({
                     borders: thinBorder,
-                    shading: { type: ShadingType.SOLID, color: '222222' },
+                    shading: { type: ShadingType.SOLID, color: 'D9D9D9' },
                     width: { size: 40, type: WidthType.PERCENTAGE },
                     margins: { top: 80, bottom: 80, left: 120, right: 120 },
                     children: [
@@ -113,7 +105,7 @@ export async function GET(req: NextRequest) {
                             spacing: { before: 60, after: 60 },
                             alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun({ text: "Tomorrow's Task", bold: true, size: 26, color: 'FFFFFF', font: 'Arial' }),
+                                new TextRun({ text: "Tomorrow's Task", bold: true, size: 26, color: '000000', font: 'Arial' }),
                             ],
                         }),
                     ],
@@ -188,8 +180,43 @@ export async function GET(req: NextRequest) {
         children.push(table as unknown as Paragraph);
     }
 
+    // Document header — "Daily Reports" on every page
+    const docHeader = new Header({
+        children: [
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 200 },
+                style: 'Normal',
+                children: [
+                    new TextRun({ text: 'Daily Reports', bold: true, size: 36, font: 'Arial', color: '000000' }),
+                ],
+            }),
+        ],
+    });
+
+    // Document footer — page numbers on every page
+    const docFooter = new Footer({
+        children: [
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                    new TextRun({ text: 'Page ', size: 18, font: 'Arial', color: '888888' }),
+                    new TextRun({ children: [PageNumber.CURRENT], size: 18, font: 'Arial', color: '888888' }),
+                    new TextRun({ text: ' of ', size: 18, font: 'Arial', color: '888888' }),
+                    new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, font: 'Arial', color: '888888' }),
+                ],
+            }),
+        ],
+    });
+
     const doc = new Document({
         sections: [{
+            headers: {
+                default: docHeader,
+            },
+            footers: {
+                default: docFooter,
+            },
             properties: {
                 page: {
                     margin: { top: 720, bottom: 720, left: 720, right: 720 },
