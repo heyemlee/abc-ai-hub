@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { DashboardStats, SOURCE_LABELS, SourceEnum } from '@/lib/types';
+import { DashboardStats, DailyReport, SOURCE_LABELS, SourceEnum } from '@/lib/types';
 
 const periodOptions = [
     { value: 'today', label: 'Today' },
@@ -19,6 +19,7 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [forbidden, setForbidden] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<DailyReport | null>(null);
 
     const isAdmin = (session?.user as { role?: string })?.role === 'ADMIN';
 
@@ -38,6 +39,23 @@ export default function DashboardPage() {
             .then((data) => { if (data) { setStats(data); setLoading(false); } })
             .catch(() => setLoading(false));
     }, [period, isAdmin, session, router]);
+
+    const closeModal = useCallback(() => setSelectedReport(null), []);
+
+    // Close modal on Escape key
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') closeModal();
+        };
+        if (selectedReport) {
+            document.addEventListener('keydown', handleEsc);
+            document.body.style.overflow = 'hidden';
+        }
+        return () => {
+            document.removeEventListener('keydown', handleEsc);
+            document.body.style.overflow = '';
+        };
+    }, [selectedReport, closeModal]);
 
     if (loading) {
         return <div className="flex items-center justify-center h-64 text-neutral-400 text-sm">Loading...</div>;
@@ -150,7 +168,12 @@ export default function DashboardPage() {
                         </thead>
                         <tbody>
                             {stats.recentReports.map((report) => (
-                                <tr key={report.id} className="border-t border-[#E5E5E5] transition-colors hover:bg-[#FAFAFA]">
+                                <tr
+                                    key={report.id}
+                                    onClick={() => setSelectedReport(report)}
+                                    className="border-t border-[#E5E5E5] cursor-pointer transition-colors hover:bg-[#F5F5FF]"
+                                    title="Click to view full report"
+                                >
                                     <td className="whitespace-nowrap px-4 py-3 text-sm text-neutral-700">
                                         {new Date(report.reportDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                                     </td>
@@ -158,10 +181,28 @@ export default function DashboardPage() {
                                         {report.user?.name || 'Unknown'}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-neutral-600">
-                                        {report.tasksToday.length > 60 ? report.tasksToday.substring(0, 60) + '...' : report.tasksToday}
+                                        <span className="flex items-center gap-1">
+                                            {report.tasksToday.length > 60
+                                                ? report.tasksToday.substring(0, 60) + '...'
+                                                : report.tasksToday}
+                                            {report.tasksToday.length > 60 && (
+                                                <svg className="h-3.5 w-3.5 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                                </svg>
+                                            )}
+                                        </span>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-neutral-600">
-                                        {report.planTomorrow.length > 60 ? report.planTomorrow.substring(0, 60) + '...' : report.planTomorrow}
+                                        <span className="flex items-center gap-1">
+                                            {report.planTomorrow.length > 60
+                                                ? report.planTomorrow.substring(0, 60) + '...'
+                                                : report.planTomorrow}
+                                            {report.planTomorrow.length > 60 && (
+                                                <svg className="h-3.5 w-3.5 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                                </svg>
+                                            )}
+                                        </span>
                                     </td>
                                 </tr>
                             ))}
@@ -184,6 +225,89 @@ export default function DashboardPage() {
                     </p>
                 </div>
             </div>
+
+            {/* ── Report Detail Modal ──────────────────────────────── */}
+            {selectedReport && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity"
+                    onClick={closeModal}
+                >
+                    <div
+                        className="relative mx-4 w-full max-w-lg animate-[slideUp_0.25s_ease-out] rounded-2xl border border-[#E5E5E5] bg-white shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-[#E5E5E5] px-6 py-4">
+                            <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                                    Daily Report
+                                </p>
+                                <p className="mt-0.5 text-sm font-medium text-black">
+                                    {selectedReport.user?.name || 'Unknown'}
+                                    <span className="ml-2 font-normal text-neutral-400">
+                                        {new Date(selectedReport.reportDate).toLocaleDateString('en-US', {
+                                            timeZone: 'UTC',
+                                            weekday: 'short',
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                        })}
+                                    </span>
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeModal}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-[#F5F5F5] hover:text-black"
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="max-h-[60vh] overflow-y-auto px-6 py-5 space-y-5">
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                                    Today&apos;s Tasks Completed
+                                </label>
+                                <div className="whitespace-pre-wrap rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] px-4 py-3 text-sm leading-relaxed text-neutral-700" style={{ minHeight: '100px' }}>
+                                    {selectedReport.tasksToday}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                                    Tomorrow&apos;s Plan
+                                </label>
+                                <div className="whitespace-pre-wrap rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] px-4 py-3 text-sm leading-relaxed text-neutral-700" style={{ minHeight: '100px' }}>
+                                    {selectedReport.planTomorrow}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="border-t border-[#E5E5E5] px-6 py-3">
+                            <p className="text-center text-[11px] text-neutral-400">
+                                Submitted {new Date(selectedReport.createdAt).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Keyframe for modal animation */}
+            <style jsx>{`
+                @keyframes slideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(24px) scale(0.97);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+            `}</style>
         </div>
     );
 }
